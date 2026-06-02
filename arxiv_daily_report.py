@@ -26,6 +26,8 @@ FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
 SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro")
+SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "60"))
+SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "3"))
 
 if not FEISHU_WEBHOOK_URL:
     print("❌ 错误：未设置环境变量 FEISHU_WEBHOOK_URL")
@@ -210,16 +212,25 @@ def summarize_with_siliconflow(text):
         )
         headers = {"Authorization": f"Bearer {SILICONFLOW_API_KEY}", "Content-Type": "application/json"}
         data = {"model": SILICONFLOW_MODEL, "messages": [{"role": "user", "content": prompt}], "max_tokens": 300}
-        try:
-            resp = requests.post("https://api.siliconflow.cn/v1/chat/completions", headers=headers, json=data, timeout=20)
-            if resp.status_code == 200:
-                return resp.json()["choices"][0]["message"]["content"].strip()
-            else:
-                print(f"⚠️ SiliconFlow API 返回错误 {resp.status_code}: {resp.text[:300]}，使用原文摘要")
-                return f"【摘要】{text[:200]}..."
-        except Exception as e:
-            print(f"⚠️ SiliconFlow 调用异常: {e}，使用原文摘要")
-            return f"【摘要】{text[:200]}..."
+        last_error = None
+        for attempt in range(1, SILICONFLOW_RETRIES + 1):
+            try:
+                resp = requests.post("https://api.siliconflow.cn/v1/chat/completions", headers=headers, json=data, timeout=SILICONFLOW_TIMEOUT)
+                if resp.status_code == 200:
+                    return resp.json()["choices"][0]["message"]["content"].strip()
+                last_error = f"HTTP {resp.status_code}: {resp.text[:300]}"
+                if resp.status_code not in (408, 429, 500, 502, 503, 504):
+                    break
+            except Exception as e:
+                last_error = str(e)
+
+            if attempt < SILICONFLOW_RETRIES:
+                wait_seconds = attempt * 5
+                print(f"⚠️ SiliconFlow 第 {attempt} 次调用失败: {last_error}，{wait_seconds} 秒后重试")
+                time.sleep(wait_seconds)
+
+        print(f"⚠️ SiliconFlow API 调用失败: {last_error}，使用原文摘要")
+        return f"【摘要】{text[:200]}..."
     else:
         print("⚠️ 未设置环境变量 SILICONFLOW_API_KEY，使用原文摘要")
         return f"【摘要】{text[:200]}..."

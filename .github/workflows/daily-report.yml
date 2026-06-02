@@ -5,6 +5,9 @@ on:
     - cron: '30 20 * * *'          # 每天北京时间 9：00
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   generate-report:
     runs-on: ubuntu-latest
