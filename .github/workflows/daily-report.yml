@@ -25,7 +25,8 @@ jobs:
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}   # 如果需要翻译，请设置此 secret；若不需要可删除
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}   # 如果需要翻译，请设置此 secret；若不需要可删除
+          SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V4-Pro' }}
         run: |
           python arxiv_daily_report.py
 

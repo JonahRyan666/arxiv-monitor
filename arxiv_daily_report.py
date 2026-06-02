@@ -4,7 +4,7 @@
 多源论文监控系统（增强版）
 ✅ 动态扩大搜索时间窗口，确保每日有推送
 ✅ 三大主题 + 制备方法组合查询
-✅ DeepSeek 翻译 + 飞书签名推送
+✅ SiliconFlow 翻译 + 飞书签名推送
 """
 
 import os
@@ -24,7 +24,8 @@ import re
 # ==================== 环境变量配置 ====================
 FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
+SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro")
 
 if not FEISHU_WEBHOOK_URL:
     print("❌ 错误：未设置环境变量 FEISHU_WEBHOOK_URL")
@@ -197,27 +198,27 @@ def fetch_iop_nsearch_papers(keywords, since_dt):
         print(f"⚠️ IOP nsearch 抓取失败 ({keywords}): {e}")
         return []
 
-# --- DeepSeek 摘要翻译 ---
-def summarize_with_deepseek(text):
+# --- SiliconFlow 摘要翻译 ---
+def summarize_with_siliconflow(text):
     if not text.strip():
         return "【摘要】无摘要。"
-    if DEEPSEEK_API_KEY:
+    if SILICONFLOW_API_KEY:
         prompt = (
             "你是一位顶尖凝聚态物理学家。请将以下英文论文摘要翻译成专业、简洁的中文，并提炼出核心创新点（100字以内）。"
             f"\n\n{text}\n\n"
             "输出格式：【中文摘要】... 【核心创新】..."
         )
-        headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        data = {"model": "deepseek-coder", "messages": [{"role": "user", "content": prompt}], "max_tokens": 300}
+        headers = {"Authorization": f"Bearer {SILICONFLOW_API_KEY}", "Content-Type": "application/json"}
+        data = {"model": SILICONFLOW_MODEL, "messages": [{"role": "user", "content": prompt}], "max_tokens": 300}
         try:
-            resp = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=data, timeout=20)
+            resp = requests.post("https://api.siliconflow.cn/v1/chat/completions", headers=headers, json=data, timeout=20)
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"].strip()
             else:
-                print(f"⚠️ DeepSeek API 返回错误 {resp.status_code}，使用原文摘要")
+                print(f"⚠️ SiliconFlow API 返回错误 {resp.status_code}，使用原文摘要")
                 return f"【摘要】{text[:200]}..."
         except Exception as e:
-            print(f"⚠️ DeepSeek 调用异常: {e}，使用原文摘要")
+            print(f"⚠️ SiliconFlow 调用异常: {e}，使用原文摘要")
             return f"【摘要】{text[:200]}..."
     else:
         return f"【摘要】{text[:200]}..."
@@ -285,7 +286,7 @@ def search_papers_with_expanding_window():
                     for p in papers:
                         if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
                             print(f"    🧠 arXiv: {p['title'][:50]}...")
-                            p["processed_summary"] = summarize_with_deepseek(p["summary"])
+                            p["processed_summary"] = summarize_with_siliconflow(p["summary"])
                             p["tag"] = topic["name"]
                             window_papers.append(p)
                             sent_ids.add(p["id"])
@@ -303,7 +304,7 @@ def search_papers_with_expanding_window():
             for p in iop_papers:
                 if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
                     print(f"    🧠 IOP: {p['title'][:50]}...")
-                    p["processed_summary"] = summarize_with_deepseek(p["summary"])
+                    p["processed_summary"] = summarize_with_siliconflow(p["summary"])
                     p["tag"] = "【IOP】"
                     window_papers.append(p)
                     sent_ids.add(p["id"])
