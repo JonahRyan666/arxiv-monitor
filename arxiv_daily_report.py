@@ -215,12 +215,13 @@ def summarize_with_siliconflow(text):
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"].strip()
             else:
-                print(f"⚠️ SiliconFlow API 返回错误 {resp.status_code}，使用原文摘要")
+                print(f"⚠️ SiliconFlow API 返回错误 {resp.status_code}: {resp.text[:300]}，使用原文摘要")
                 return f"【摘要】{text[:200]}..."
         except Exception as e:
             print(f"⚠️ SiliconFlow 调用异常: {e}，使用原文摘要")
             return f"【摘要】{text[:200]}..."
     else:
+        print("⚠️ 未设置环境变量 SILICONFLOW_API_KEY，使用原文摘要")
         return f"【摘要】{text[:200]}..."
 
 # --- 飞书推送（支持签名）---
