@@ -21,6 +21,26 @@ from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 import re
 
+JPSJ_ISSNS = ("0031-9015", "1347-4073")
+JPSJ_RELEVANCE_TERMS = (
+    "magnetoelectric",
+    "multiferroic",
+    "quantum spin liquid",
+    "spin liquid",
+    "kitaev",
+    "kagome",
+    "triangular lattice",
+    "frustrated magnet",
+    "frustrated magnetism",
+    "neutron scattering",
+    "single-crystal",
+    "single crystal",
+    "single crystal growth",
+    "floating zone",
+    "flux growth",
+    "chemical vapor transport",
+)
+
 # ==================== 环境变量配置 ====================
 FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
@@ -111,6 +131,21 @@ IOP_SEARCH_TERMS = [
     "chemical vapor transport quantum spin liquid"
 ]
 
+# JPSJ / Journal of the Physical Society of Japan 搜索词
+JPSJ_SEARCH_TERMS = [
+    "single crystal magnetoelectric",
+    "single crystal multiferroic",
+    "single crystal growth magnetoelectric",
+    "floating zone magnetoelectric",
+    "flux growth frustrated magnet",
+    "chemical vapor transport quantum spin liquid",
+    "quantum spin liquid single crystal",
+    "Kitaev single crystal",
+    "kagome quantum spin liquid",
+    "triangular lattice quantum spin liquid",
+    "frustrated magnetism neutron scattering",
+]
+
 # 动态时间窗口配置（单位：天）
 TIME_WINDOWS = [7, 14, 30, 90]  # 依次扩大
 SENT_IDS_FILE = Path(__file__).parent / "sent_papers.json"
@@ -199,6 +234,134 @@ def fetch_iop_nsearch_papers(keywords, since_dt):
     except Exception as e:
         print(f"⚠️ IOP nsearch 抓取失败 ({keywords}): {e}")
         return []
+
+# --- JPSJ 抓取 ---
+def is_relevant_jpsj_hit(title, summary=""):
+    text = f"{title} {summary}".lower()
+    return any(term in text for term in JPSJ_RELEVANCE_TERMS)
+
+def parse_crossref_date(item):
+    date_obj = item.get("published-print") or item.get("published-online") or item.get("published")
+    if not date_obj:
+        return None
+    parts = date_obj.get("date-parts", [[]])[0]
+    if not parts:
+        return None
+    year = parts[0]
+    month = parts[1] if len(parts) > 1 else 1
+    day = parts[2] if len(parts) > 2 else 1
+    return datetime(year, month, day, tzinfo=timezone.utc)
+
+def fetch_jpsj_crossref_papers(keywords, since_dt):
+    papers = []
+    seen_ids = set()
+    headers = {
+        "User-Agent": "arxiv-monitor/1.0 (mailto:research@example.com)",
+    }
+    for issn in JPSJ_ISSNS:
+        params = {
+            "query.bibliographic": keywords,
+            "filter": f"issn:{issn},from-pub-date:{since_dt.date().isoformat()}",
+            "sort": "published",
+            "order": "desc",
+            "rows": 20,
+        }
+        try:
+            response = requests.get("https://api.crossref.org/works", params=params, headers=headers, timeout=20)
+            response.raise_for_status()
+            items = response.json().get("message", {}).get("items", [])
+            for item in items:
+                doi = item.get("DOI")
+                titles = item.get("title") or []
+                title = " ".join(BeautifulSoup(titles[0], "html.parser").get_text(" ", strip=True).split()) if titles else ""
+                if not doi or not title:
+                    continue
+                pub_date = parse_crossref_date(item)
+                if pub_date and pub_date < since_dt:
+                    continue
+                abstract = item.get("abstract", "")
+                clean_abstract = BeautifulSoup(abstract, "html.parser").get_text(" ", strip=True) if abstract else ""
+                summary = clean_abstract or f"JPSJ/Crossref search hit for: {keywords}"
+                if not is_relevant_jpsj_hit(title, clean_abstract):
+                    continue
+                link = f"https://journals.jps.jp/doi/{doi}"
+                paper_id = "jpsj:" + doi.lower()
+                if paper_id in seen_ids:
+                    continue
+                seen_ids.add(paper_id)
+                papers.append({
+                    "id": paper_id,
+                    "title": title,
+                    "summary": summary,
+                    "link": link,
+                })
+        except Exception as e:
+            print(f"⚠️ JPSJ Crossref 抓取失败 ({keywords}, {issn}): {e}")
+    return papers
+
+def fetch_jpsj_papers(keywords, since_dt):
+    base_url = "https://journals.jps.jp/action/doSearch"
+    params = {
+        "AllField": keywords,
+        "SeriesKey": "jpsj",
+        "sortBy": "Earliest",
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    try:
+        response = requests.get(base_url, params=params, headers=headers, timeout=20)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        papers = []
+        for item in soup.select(".issue-item, .search__item, .articleEntry, li.searchResultItem"):
+            try:
+                title_tag = item.select_one("a[href*='/doi/']")
+                if not title_tag:
+                    continue
+                title = " ".join(title_tag.get_text(" ", strip=True).split())
+                href = title_tag.get("href", "")
+                if not title or "/doi/" not in href:
+                    continue
+                link = href if href.startswith("http") else "https://journals.jps.jp" + href
+                doi_match = re.search(r"10\.\d{4,9}/[-._;()/:A-Z0-9]+", link, re.I)
+                paper_id = "jpsj:" + (doi_match.group(0).lower() if doi_match else link.rstrip("/").split("/")[-1])
+
+                item_text = item.get_text(" ", strip=True)
+                date_match = re.search(
+                    r"(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}|[A-Za-z]{3,9}\s+\d{1,2},\s+\d{4}|\d{4})",
+                    item_text,
+                )
+                if date_match:
+                    date_text = date_match.group(1)
+                    pub_date = None
+                    for fmt in ("%d %B %Y", "%d %b %Y", "%B %d, %Y", "%b %d, %Y", "%Y"):
+                        try:
+                            pub_date = datetime.strptime(date_text, fmt).replace(tzinfo=timezone.utc)
+                            break
+                        except ValueError:
+                            continue
+                    if pub_date and pub_date < since_dt:
+                        continue
+
+                summary_tag = item.select_one(".hlFld-Abstract, .abstract, .issue-item__abstract")
+                summary = summary_tag.get_text(" ", strip=True) if summary_tag else f"JPSJ search hit for: {keywords}"
+                papers.append({
+                    "id": paper_id,
+                    "title": title,
+                    "summary": summary,
+                    "link": link,
+                })
+            except Exception:
+                continue
+        if papers:
+            return papers
+        return fetch_jpsj_crossref_papers(keywords, since_dt)
+    except Exception as e:
+        print(f"⚠️ JPSJ 官网抓取失败 ({keywords}): {e}，改用 Crossref 兜底")
+        return fetch_jpsj_crossref_papers(keywords, since_dt)
 
 # --- SiliconFlow 摘要翻译 ---
 def summarize_with_siliconflow(text):
@@ -321,6 +484,18 @@ def search_papers_with_expanding_window():
                     window_papers.append(p)
                     sent_ids.add(p["id"])
 
+        # 3. 抓取 JPSJ
+        print("  📡 搜索 JPSJ / Journal of the Physical Society of Japan ...")
+        for terms in JPSJ_SEARCH_TERMS:
+            jpsj_papers = fetch_jpsj_papers(terms, since_dt)
+            for p in jpsj_papers:
+                if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                    print(f"    🧠 JPSJ: {p['title'][:50]}...")
+                    p["processed_summary"] = summarize_with_siliconflow(p["summary"])
+                    p["tag"] = "【JPSJ】"
+                    window_papers.append(p)
+                    sent_ids.add(p["id"])
+
         if window_papers:
             print(f"  ✅ 在 {days} 天内找到 {len(window_papers)} 篇新论文")
             all_new_papers = window_papers
@@ -335,7 +510,7 @@ def search_papers_with_expanding_window():
 if __name__ == "__main__":
     print("=" * 60)
     print("🚀 启动多源论文监控系统（增强版）")
-    print("📚 来源：arXiv + IOP Science (nsearch)")
+    print("📚 来源：arXiv + IOP Science (nsearch) + JPSJ")
     print("=" * 60)
 
     new_papers, used_days, updated_sent_ids = search_papers_with_expanding_window()
@@ -343,7 +518,7 @@ if __name__ == "__main__":
     if not new_papers:
         print("\n❌ 所有时间窗口均未找到新论文。")
         # 可选：发送一条提示消息到飞书
-        msg = "今日 arXiv & IOP 未找到符合条件的新论文。"
+        msg = "今日 arXiv & IOP & JPSJ 未找到符合条件的新论文。"
         send_to_feishu("系统通知", msg, "#", "【提示】")
     else:
         print(f"\n📬 共找到 {len(new_papers)} 篇新论文（时间窗口：最近 {used_days} 天）")
