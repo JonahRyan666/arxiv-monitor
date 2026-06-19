@@ -11,6 +11,7 @@ env:
 jobs:
   generate-report:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +31,10 @@ jobs:
           FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}   # 如果需要翻译，请设置此 secret；若不需要可删除
           SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V4-Pro' }}
+          PYTHONUNBUFFERED: "1"
+          MAX_PAPERS_PER_RUN: "8"
+          SILICONFLOW_TIMEOUT: "25"
+          SILICONFLOW_RETRIES: "1"
         run: |
           python arxiv_daily_report.py
 
