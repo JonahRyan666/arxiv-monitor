@@ -46,8 +46,9 @@ FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
 SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro")
-SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "60"))
-SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "3"))
+SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "25"))
+SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "1"))
+MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "8"))
 
 if not FEISHU_WEBHOOK_URL:
     print("❌ 错误：未设置环境变量 FEISHU_WEBHOOK_URL")
@@ -161,6 +162,9 @@ def load_sent_ids():
 
 def save_sent_ids(ids):
     SENT_IDS_FILE.write_text(json.dumps(list(ids), indent=2), encoding="utf-8")
+
+def reached_run_limit(papers):
+    return len(papers) >= MAX_PAPERS_PER_RUN
 
 # --- arXiv 相关 ---
 def query_arxiv_raw(query_str, max_results=30, timeout=30):
@@ -466,35 +470,49 @@ def search_papers_with_expanding_window():
                             window_papers.append(p)
                             sent_ids.add(p["id"])
                             collected += 1
-                            if collected >= topic["target_count"]:
+                            if collected >= topic["target_count"] or reached_run_limit(window_papers):
                                 break
+                    if reached_run_limit(window_papers):
+                        break
                 except Exception as e:
                     print(f"    ⚠️ 查询失败: {e}")
                     continue
+            if reached_run_limit(window_papers):
+                break
 
         # 2. 抓取 IOP
-        print("  📡 搜索 IOP Science (nsearch) ...")
-        for terms in IOP_SEARCH_TERMS:
-            iop_papers = fetch_iop_nsearch_papers(terms, since_dt)
-            for p in iop_papers:
-                if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
-                    print(f"    🧠 IOP: {p['title'][:50]}...")
-                    p["processed_summary"] = summarize_with_siliconflow(p["summary"])
-                    p["tag"] = "【IOP】"
-                    window_papers.append(p)
-                    sent_ids.add(p["id"])
+        if not reached_run_limit(window_papers):
+            print("  📡 搜索 IOP Science (nsearch) ...")
+            for terms in IOP_SEARCH_TERMS:
+                iop_papers = fetch_iop_nsearch_papers(terms, since_dt)
+                for p in iop_papers:
+                    if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                        print(f"    🧠 IOP: {p['title'][:50]}...")
+                        p["processed_summary"] = summarize_with_siliconflow(p["summary"])
+                        p["tag"] = "【IOP】"
+                        window_papers.append(p)
+                        sent_ids.add(p["id"])
+                        if reached_run_limit(window_papers):
+                            break
+                if reached_run_limit(window_papers):
+                    break
 
         # 3. 抓取 JPSJ
-        print("  📡 搜索 JPSJ / Journal of the Physical Society of Japan ...")
-        for terms in JPSJ_SEARCH_TERMS:
-            jpsj_papers = fetch_jpsj_papers(terms, since_dt)
-            for p in jpsj_papers:
-                if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
-                    print(f"    🧠 JPSJ: {p['title'][:50]}...")
-                    p["processed_summary"] = summarize_with_siliconflow(p["summary"])
-                    p["tag"] = "【JPSJ】"
-                    window_papers.append(p)
-                    sent_ids.add(p["id"])
+        if not reached_run_limit(window_papers):
+            print("  📡 搜索 JPSJ / Journal of the Physical Society of Japan ...")
+            for terms in JPSJ_SEARCH_TERMS:
+                jpsj_papers = fetch_jpsj_papers(terms, since_dt)
+                for p in jpsj_papers:
+                    if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                        print(f"    🧠 JPSJ: {p['title'][:50]}...")
+                        p["processed_summary"] = summarize_with_siliconflow(p["summary"])
+                        p["tag"] = "【JPSJ】"
+                        window_papers.append(p)
+                        sent_ids.add(p["id"])
+                        if reached_run_limit(window_papers):
+                            break
+                if reached_run_limit(window_papers):
+                    break
 
         if window_papers:
             print(f"  ✅ 在 {days} 天内找到 {len(window_papers)} 篇新论文")
