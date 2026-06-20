@@ -33,8 +33,10 @@ jobs:
           SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V4-Pro' }}
           PYTHONUNBUFFERED: "1"
           MAX_PAPERS_PER_RUN: "8"
+          JPSJ_TARGET_PER_RUN: "3"
           SILICONFLOW_TIMEOUT: "25"
           SILICONFLOW_RETRIES: "1"
+          TRANSLATION_VALIDATION_RETRIES: "1"
         run: |
           python arxiv_daily_report.py
 
