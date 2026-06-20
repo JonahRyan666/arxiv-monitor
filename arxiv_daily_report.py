@@ -46,9 +46,9 @@ FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
 SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro")
-SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "25"))
+SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "30"))
 SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "1"))
-TRANSLATION_VALIDATION_RETRIES = int(os.getenv("TRANSLATION_VALIDATION_RETRIES", "1"))
+TRANSLATION_VALIDATION_RETRIES = int(os.getenv("TRANSLATION_VALIDATION_RETRIES", "2"))
 MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "8"))
 JPSJ_TARGET_PER_RUN = int(os.getenv("JPSJ_TARGET_PER_RUN", "3"))
 
@@ -375,7 +375,12 @@ def has_chinese(text):
 
 def is_usable_chinese_summary(summary):
     title_match = re.search(r"【中文题名】[ \t]*(.+)", summary or "")
-    return bool(title_match and has_chinese(title_match.group(1)))
+    overview_match = re.search(r"【内容概要】[ \t]*(.+)", summary or "")
+    if not title_match or not overview_match:
+        return False
+    title_text = title_match.group(1).strip()
+    overview_text = overview_match.group(1).strip()
+    return has_chinese(title_text) and has_chinese(overview_text)
 
 def summarize_with_siliconflow(title, text, tag=""):
     title = (title or "").strip()
@@ -387,6 +392,8 @@ def summarize_with_siliconflow(title, text, tag=""):
             "请把下面论文信息整理成适合飞书推送的中文简报，重点判断它是否与单晶生长、磁电耦合、"
             "量子自旋液体、Kitaev/kagome/frustrated magnetism 或 neutron scattering 相关。"
             "如果没有摘要，不要编造具体结果，只根据题名给出保守判断。"
+            "必须把英文题名翻译成中文；材料化学式、Kitaev、kagome、JPSJ 等专有名词可以保留原文，"
+            "但不要整句复制英文题名。"
             "\n\n"
             f"来源标签：{tag}\n"
             f"英文题名：{title}\n"
@@ -397,10 +404,20 @@ def summarize_with_siliconflow(title, text, tag=""):
             "【相关性】..."
         )
         headers = {"Authorization": f"Bearer {SILICONFLOW_API_KEY}", "Content-Type": "application/json"}
-        data = {"model": SILICONFLOW_MODEL, "messages": [{"role": "user", "content": prompt}], "max_tokens": 450}
         last_error = None
         max_attempts = SILICONFLOW_RETRIES + TRANSLATION_VALIDATION_RETRIES
         for attempt in range(1, max_attempts + 1):
+            retry_instruction = ""
+            if attempt > 1:
+                retry_instruction = (
+                    "\n\n上一次输出未通过中文校验。请重新输出，确保【中文题名】不是英文原题，"
+                    "【内容概要】和【相关性】也必须是中文。"
+                )
+            data = {
+                "model": SILICONFLOW_MODEL,
+                "messages": [{"role": "user", "content": prompt + retry_instruction}],
+                "max_tokens": 450,
+            }
             try:
                 resp = requests.post("https://api.siliconflow.cn/v1/chat/completions", headers=headers, json=data, timeout=SILICONFLOW_TIMEOUT)
                 if resp.status_code == 200:
@@ -421,10 +438,10 @@ def summarize_with_siliconflow(title, text, tag=""):
                 time.sleep(wait_seconds)
 
         print(f"⚠️ SiliconFlow API 调用失败: {last_error}，使用原文摘要")
-        return f"【中文题名】翻译失败：{title}\n【内容概要】{source_text[:200]}...\n【相关性】请查看英文题名和原文链接。"
+        return f"【中文题名】翻译失败，见英文题名\n【英文题名】{title}\n【内容概要】自动翻译失败，原始信息：{source_text[:200]}...\n【相关性】请查看英文题名和原文链接。"
     else:
         print("⚠️ 未设置环境变量 SILICONFLOW_API_KEY，使用原文摘要")
-        return f"【中文题名】未翻译：{title}\n【内容概要】{source_text[:200]}...\n【相关性】未配置 SiliconFlow API Key，暂不能自动生成中文导读。"
+        return f"【中文题名】未配置翻译，见英文题名\n【英文题名】{title}\n【内容概要】未配置 SiliconFlow API Key，原始信息：{source_text[:200]}...\n【相关性】暂不能自动生成中文导读。"
 
 # --- 飞书推送（支持签名）---
 def get_display_title(title, summary):

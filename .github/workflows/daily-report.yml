@@ -34,9 +34,9 @@ jobs:
           PYTHONUNBUFFERED: "1"
           MAX_PAPERS_PER_RUN: "8"
           JPSJ_TARGET_PER_RUN: "3"
-          SILICONFLOW_TIMEOUT: "25"
+          SILICONFLOW_TIMEOUT: "30"
           SILICONFLOW_RETRIES: "1"
-          TRANSLATION_VALIDATION_RETRIES: "1"
+          TRANSLATION_VALIDATION_RETRIES: "2"
         run: |
           python arxiv_daily_report.py
 
