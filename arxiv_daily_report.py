@@ -15,6 +15,7 @@ import time
 import hashlib
 import base64
 import hmac
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus
@@ -192,6 +193,80 @@ def parse_arxiv_xml(xml_text, since_dt):
             continue
     return entries
 
+def clean_title_text(text):
+    text = BeautifulSoup(text or "", "html.parser").get_text(" ", strip=True)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+def title_words(text):
+    stop_words = {
+        "the", "and", "for", "with", "from", "into", "onto", "of", "in", "on",
+        "a", "an", "to", "by", "at", "as", "is", "are", "via", "using",
+    }
+    words = re.findall(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)?", clean_title_text(text))
+    return [w for w in words if len(w) > 1 and w.lower() not in stop_words]
+
+def title_overlap_score(a, b):
+    a_words = {w.lower() for w in title_words(a)}
+    b_words = {w.lower() for w in title_words(b)}
+    if not a_words or not b_words:
+        return 0.0
+    return len(a_words & b_words) / max(len(a_words), 1)
+
+def parse_arxiv_entries(xml_text):
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    entries = []
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return entries
+    for entry in root.findall("atom:entry", ns):
+        title_el = entry.find("atom:title", ns)
+        summary_el = entry.find("atom:summary", ns)
+        id_el = entry.find("atom:id", ns)
+        if title_el is None or summary_el is None or id_el is None:
+            continue
+        entries.append({
+            "title": clean_title_text("".join(title_el.itertext())),
+            "summary": " ".join("".join(summary_el.itertext()).split()),
+            "link": id_el.text,
+        })
+    return entries
+
+def arxiv_queries_for_title(title):
+    words = title_words(title)
+    if len(words) < 2:
+        return []
+    clean_title = clean_title_text(title)
+    queries = [f'ti:"{clean_title}"']
+    first_phrase = " ".join(words[:2])
+    rare_phrase = next((w for w in words[2:] if "-" in w), None)
+    if not rare_phrase and len(words) >= 4:
+        rare_phrase = " ".join(words[2:4])
+    if rare_phrase:
+        queries.append(f'all:"{first_phrase}" AND all:"{rare_phrase}"')
+    if len(words) >= 4:
+        queries.append(f'all:"{" ".join(words[:4])}"')
+    return queries
+
+def fetch_arxiv_abstract_by_title(title):
+    best_entry = None
+    best_score = 0.0
+    for query in arxiv_queries_for_title(title):
+        try:
+            xml = query_arxiv_raw(query, max_results=5, timeout=20)
+            for entry in parse_arxiv_entries(xml):
+                score = title_overlap_score(title, entry["title"])
+                if score > best_score:
+                    best_entry = entry
+                    best_score = score
+        except Exception as e:
+            print(f"⚠️ arXiv 摘要兜底查询失败 ({query}): {e}")
+    if best_entry and best_score >= 0.45:
+        print(f"    🔁 使用 arXiv 摘要兜底: {best_entry['title'][:60]}...")
+        return best_entry["summary"]
+    return ""
+
 # --- IOP nsearch 抓取 ---
 def fetch_iop_nsearch_papers(keywords, since_dt):
     base_url = "https://iopscience.iop.org/nsearch"
@@ -246,6 +321,22 @@ def is_relevant_jpsj_hit(title, summary=""):
     text = f"{title} {summary}".lower()
     return any(term in text for term in JPSJ_RELEVANCE_TERMS)
 
+def is_placeholder_summary(summary):
+    summary = (summary or "").strip()
+    if not summary:
+        return True
+    return (
+        summary.startswith("JPSJ/Crossref search hit for:")
+        or summary.startswith("JPSJ search hit for:")
+        or summary == "无摘要。请仅根据题名判断。"
+    )
+
+def enrich_jpsj_summary(title, summary):
+    if not is_placeholder_summary(summary):
+        return summary
+    arxiv_summary = fetch_arxiv_abstract_by_title(title)
+    return arxiv_summary or summary
+
 def parse_crossref_date(item):
     date_obj = item.get("published-print") or item.get("published-online") or item.get("published")
     if not date_obj:
@@ -298,7 +389,7 @@ def fetch_jpsj_crossref_papers(keywords, since_dt):
                 papers.append({
                     "id": paper_id,
                     "title": title,
-                    "summary": summary,
+                    "summary": enrich_jpsj_summary(title, summary),
                     "link": link,
                 })
         except Exception as e:
@@ -357,7 +448,7 @@ def fetch_jpsj_papers(keywords, since_dt):
                 papers.append({
                     "id": paper_id,
                     "title": title,
-                    "summary": summary,
+                    "summary": enrich_jpsj_summary(title, summary),
                     "link": link,
                 })
             except Exception:
@@ -375,33 +466,33 @@ def has_chinese(text):
 
 def is_usable_chinese_summary(summary):
     title_match = re.search(r"【中文题名】[ \t]*(.+)", summary or "")
-    overview_match = re.search(r"【内容概要】[ \t]*(.+)", summary or "")
-    if not title_match or not overview_match:
+    abstract_match = re.search(r"【摘要翻译】[ \t]*(.+)", summary or "", flags=re.S)
+    if not title_match or not abstract_match:
         return False
     title_text = title_match.group(1).strip()
-    overview_text = overview_match.group(1).strip()
-    return has_chinese(title_text) and has_chinese(overview_text)
+    abstract_text = abstract_match.group(1).strip()
+    return has_chinese(title_text) and has_chinese(abstract_text)
 
 def summarize_with_siliconflow(title, text, tag=""):
     title = (title or "").strip()
     text = (text or "").strip()
-    source_text = text if text else "无摘要。请仅根据题名判断。"
+    if is_placeholder_summary(text):
+        return f"【中文题名】未获取到摘要\n【英文题名】{title}\n【摘要翻译】未能从可访问的数据源获取该文摘要，跳过自动摘要翻译。"
+    source_text = text
     if SILICONFLOW_API_KEY:
         prompt = (
             "你是一位凝聚态物理和中子散射方向的科研助手。"
-            "请把下面论文信息整理成适合飞书推送的中文简报，重点判断它是否与单晶生长、磁电耦合、"
-            "量子自旋液体、Kitaev/kagome/frustrated magnetism 或 neutron scattering 相关。"
-            "如果没有摘要，不要编造具体结果，只根据题名给出保守判断。"
+            "请只做两件事：1）把英文题名翻译成中文；2）把英文摘要忠实翻译成中文。"
+            "不要写相关性判断，不要写推荐语，不要补充英文摘要之外的信息。"
             "必须把英文题名翻译成中文；材料化学式、Kitaev、kagome、JPSJ 等专有名词可以保留原文，"
             "但不要整句复制英文题名。"
             "\n\n"
             f"来源标签：{tag}\n"
             f"英文题名：{title}\n"
-            f"英文摘要/检索信息：{source_text}\n\n"
+            f"英文摘要：{source_text}\n\n"
             "输出格式：\n"
             "【中文题名】...\n"
-            "【内容概要】...\n"
-            "【相关性】..."
+            "【摘要翻译】..."
         )
         headers = {"Authorization": f"Bearer {SILICONFLOW_API_KEY}", "Content-Type": "application/json"}
         last_error = None
@@ -411,7 +502,7 @@ def summarize_with_siliconflow(title, text, tag=""):
             if attempt > 1:
                 retry_instruction = (
                     "\n\n上一次输出未通过中文校验。请重新输出，确保【中文题名】不是英文原题，"
-                    "【内容概要】和【相关性】也必须是中文。"
+                    "【摘要翻译】必须是中文；不要添加其他字段。"
                 )
             data = {
                 "model": SILICONFLOW_MODEL,
@@ -438,10 +529,10 @@ def summarize_with_siliconflow(title, text, tag=""):
                 time.sleep(wait_seconds)
 
         print(f"⚠️ SiliconFlow API 调用失败: {last_error}，使用原文摘要")
-        return f"【中文题名】翻译失败，见英文题名\n【英文题名】{title}\n【内容概要】自动翻译失败，原始信息：{source_text[:200]}...\n【相关性】请查看英文题名和原文链接。"
+        return f"【中文题名】翻译失败，见英文题名\n【英文题名】{title}\n【摘要翻译】自动翻译失败。英文摘要：{source_text[:600]}..."
     else:
         print("⚠️ 未设置环境变量 SILICONFLOW_API_KEY，使用原文摘要")
-        return f"【中文题名】未配置翻译，见英文题名\n【英文题名】{title}\n【内容概要】未配置 SiliconFlow API Key，原始信息：{source_text[:200]}...\n【相关性】暂不能自动生成中文导读。"
+        return f"【中文题名】未配置翻译，见英文题名\n【英文题名】{title}\n【摘要翻译】未配置 SiliconFlow API Key。英文摘要：{source_text[:600]}..."
 
 # --- 飞书推送（支持签名）---
 def get_display_title(title, summary):
