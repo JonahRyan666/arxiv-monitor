@@ -108,6 +108,24 @@ ARXIV_TOPICS = [
         "target_count": 4
     },
     {
+        "name": "【单晶/晶体生长专题】",
+        "queries": [
+            'abs:"single crystal growth" AND abs:"magnetic"',
+            'abs:"single crystal" AND abs:"magnetization"',
+            'abs:"single crystal" AND abs:"magnetic properties"',
+            'abs:"single crystal" AND abs:"neutron scattering"',
+            'abs:"single crystal" AND abs:"magnetoelectric"',
+            'abs:"single crystal" AND abs:"multiferroic"',
+            'abs:"single crystal" AND abs:"quantum spin liquid"',
+            'abs:"single crystal" AND abs:"frustrated magnet"',
+            'abs:"floating zone" AND abs:"magnetic"',
+            'abs:"optical floating zone"',
+            'abs:"flux growth" AND abs:"single crystal"',
+            'abs:"chemical vapor transport" AND abs:"single crystal"',
+        ],
+        "target_count": 4
+    },
+    {
         "name": "【制备方法专题】",
         "queries": [
             'abs:"solid state reaction" abs:"multiferroic"',
@@ -127,6 +145,13 @@ IOP_SEARCH_TERMS = [
     "multiferroic magnetoelectric solid state reaction",
     "multiferroic magnetoelectric ceramic method",
     "multiferroic magnetoelectric CVT",
+    "single crystal growth magnetic properties",
+    "single crystal neutron scattering magnetism",
+    "single crystal magnetoelectric multiferroic",
+    "single crystal quantum spin liquid",
+    "single crystal frustrated magnet",
+    "floating zone single crystal magnetism",
+    "flux growth single crystal magnetic",
     "quantum spin liquid frustrated magnet solid state",
     "quantum spin liquid frustrated magnet CVT",
     "kagome lattice solid state reaction",
