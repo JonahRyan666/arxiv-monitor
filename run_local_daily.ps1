@@ -28,6 +28,7 @@ Get-Content -LiteralPath $envFile | ForEach-Object {
 }
 
 $env:PYTHONUNBUFFERED = "1"
+$env:PYTHONIOENCODING = "utf-8"
 python arxiv_daily_report.py
 
 Stop-Transcript | Out-Null

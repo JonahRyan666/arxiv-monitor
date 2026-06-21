@@ -678,7 +678,6 @@ def search_papers_with_expanding_window():
                     p["tag"] = "【JPSJ】"
                     p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                     window_papers.append(p)
-                    sent_ids.add(p["id"])
                     jpsj_collected += 1
                     if jpsj_collected >= JPSJ_TARGET_PER_RUN or reached_run_limit(window_papers):
                         break
@@ -686,32 +685,32 @@ def search_papers_with_expanding_window():
                 break
 
         # 2. 抓取 arXiv
-        for topic in ARXIV_TOPICS:
-            print(f"  🔍 检索 arXiv: {topic['name']}")
-            collected = 0
-            for q in topic["queries"]:
-                if collected >= topic["target_count"]:
-                    break
-                try:
-                    xml = query_arxiv_raw(q, max_results=25)
-                    papers = parse_arxiv_xml(xml, since_dt)
-                    for p in papers:
-                        if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
-                            print(f"    🧠 arXiv: {p['title'][:50]}...")
-                            p["tag"] = topic["name"]
-                            p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
-                            window_papers.append(p)
-                            sent_ids.add(p["id"])
-                            collected += 1
-                            if collected >= topic["target_count"] or reached_run_limit(window_papers):
-                                break
-                    if reached_run_limit(window_papers):
+        if not reached_run_limit(window_papers):
+            for topic in ARXIV_TOPICS:
+                print(f"  🔍 检索 arXiv: {topic['name']}")
+                collected = 0
+                for q in topic["queries"]:
+                    if collected >= topic["target_count"]:
                         break
-                except Exception as e:
-                    print(f"    ⚠️ 查询失败: {e}")
-                    continue
-            if reached_run_limit(window_papers):
-                break
+                    try:
+                        xml = query_arxiv_raw(q, max_results=25)
+                        papers = parse_arxiv_xml(xml, since_dt)
+                        for p in papers:
+                            if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                                print(f"    🧠 arXiv: {p['title'][:50]}...")
+                                p["tag"] = topic["name"]
+                                p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
+                                window_papers.append(p)
+                                collected += 1
+                                if collected >= topic["target_count"] or reached_run_limit(window_papers):
+                                    break
+                        if reached_run_limit(window_papers):
+                            break
+                    except Exception as e:
+                        print(f"    ⚠️ 查询失败: {e}")
+                        continue
+                if reached_run_limit(window_papers):
+                    break
 
         # 3. 抓取 IOP
         if not reached_run_limit(window_papers):
@@ -724,7 +723,6 @@ def search_papers_with_expanding_window():
                         p["tag"] = "【IOP】"
                         p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                         window_papers.append(p)
-                        sent_ids.add(p["id"])
                         if reached_run_limit(window_papers):
                             break
                 if reached_run_limit(window_papers):
