@@ -108,6 +108,24 @@ ARXIV_TOPICS = [
         "target_count": 4
     },
     {
+        "name": "【单晶/晶体生长专题】",
+        "queries": [
+            'abs:"single crystal growth" AND abs:"magnetic"',
+            'abs:"single crystal" AND abs:"magnetization"',
+            'abs:"single crystal" AND abs:"magnetic properties"',
+            'abs:"single crystal" AND abs:"neutron scattering"',
+            'abs:"single crystal" AND abs:"magnetoelectric"',
+            'abs:"single crystal" AND abs:"multiferroic"',
+            'abs:"single crystal" AND abs:"quantum spin liquid"',
+            'abs:"single crystal" AND abs:"frustrated magnet"',
+            'abs:"floating zone" AND abs:"magnetic"',
+            'abs:"optical floating zone"',
+            'abs:"flux growth" AND abs:"single crystal"',
+            'abs:"chemical vapor transport" AND abs:"single crystal"',
+        ],
+        "target_count": 4
+    },
+    {
         "name": "【制备方法专题】",
         "queries": [
             'abs:"solid state reaction" abs:"multiferroic"',
@@ -127,6 +145,13 @@ IOP_SEARCH_TERMS = [
     "multiferroic magnetoelectric solid state reaction",
     "multiferroic magnetoelectric ceramic method",
     "multiferroic magnetoelectric CVT",
+    "single crystal growth magnetic properties",
+    "single crystal neutron scattering magnetism",
+    "single crystal magnetoelectric multiferroic",
+    "single crystal quantum spin liquid",
+    "single crystal frustrated magnet",
+    "floating zone single crystal magnetism",
+    "flux growth single crystal magnetic",
     "quantum spin liquid frustrated magnet solid state",
     "quantum spin liquid frustrated magnet CVT",
     "kagome lattice solid state reaction",
@@ -647,12 +672,16 @@ def send_to_feishu(title, summary, link, tag):
             result = resp.json()
             if result.get("code") == 0:
                 print(f"✅ 已发送到飞书: {title[:30]}...")
+                return True
             else:
                 print(f"❌ 飞书返回错误: {result}")
+                return False
         else:
             print(f"❌ 发送失败 HTTP {resp.status_code}")
+            return False
     except Exception as e:
         print(f"❌ 发送异常: {e}")
+        return False
 
 # ==================== 动态时间窗口搜索 ====================
 def search_papers_with_expanding_window():
@@ -675,10 +704,12 @@ def search_papers_with_expanding_window():
             for p in jpsj_papers:
                 if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
                     print(f"    🧠 JPSJ: {p['title'][:50]}...")
+                    if is_placeholder_summary(p["summary"]):
+                        print("      ⚠️ 未获取到真实摘要，跳过该 JPSJ 条目")
+                        continue
                     p["tag"] = "【JPSJ】"
                     p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                     window_papers.append(p)
-                    sent_ids.add(p["id"])
                     jpsj_collected += 1
                     if jpsj_collected >= JPSJ_TARGET_PER_RUN or reached_run_limit(window_papers):
                         break
@@ -686,32 +717,32 @@ def search_papers_with_expanding_window():
                 break
 
         # 2. 抓取 arXiv
-        for topic in ARXIV_TOPICS:
-            print(f"  🔍 检索 arXiv: {topic['name']}")
-            collected = 0
-            for q in topic["queries"]:
-                if collected >= topic["target_count"]:
-                    break
-                try:
-                    xml = query_arxiv_raw(q, max_results=25)
-                    papers = parse_arxiv_xml(xml, since_dt)
-                    for p in papers:
-                        if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
-                            print(f"    🧠 arXiv: {p['title'][:50]}...")
-                            p["tag"] = topic["name"]
-                            p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
-                            window_papers.append(p)
-                            sent_ids.add(p["id"])
-                            collected += 1
-                            if collected >= topic["target_count"] or reached_run_limit(window_papers):
-                                break
-                    if reached_run_limit(window_papers):
+        if not reached_run_limit(window_papers):
+            for topic in ARXIV_TOPICS:
+                print(f"  🔍 检索 arXiv: {topic['name']}")
+                collected = 0
+                for q in topic["queries"]:
+                    if collected >= topic["target_count"]:
                         break
-                except Exception as e:
-                    print(f"    ⚠️ 查询失败: {e}")
-                    continue
-            if reached_run_limit(window_papers):
-                break
+                    try:
+                        xml = query_arxiv_raw(q, max_results=25)
+                        papers = parse_arxiv_xml(xml, since_dt)
+                        for p in papers:
+                            if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                                print(f"    🧠 arXiv: {p['title'][:50]}...")
+                                p["tag"] = topic["name"]
+                                p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
+                                window_papers.append(p)
+                                collected += 1
+                                if collected >= topic["target_count"] or reached_run_limit(window_papers):
+                                    break
+                        if reached_run_limit(window_papers):
+                            break
+                    except Exception as e:
+                        print(f"    ⚠️ 查询失败: {e}")
+                        continue
+                if reached_run_limit(window_papers):
+                    break
 
         # 3. 抓取 IOP
         if not reached_run_limit(window_papers):
@@ -724,7 +755,6 @@ def search_papers_with_expanding_window():
                         p["tag"] = "【IOP】"
                         p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                         window_papers.append(p)
-                        sent_ids.add(p["id"])
                         if reached_run_limit(window_papers):
                             break
                 if reached_run_limit(window_papers):
@@ -756,8 +786,11 @@ if __name__ == "__main__":
         send_to_feishu("系统通知", msg, "#", "【提示】")
     else:
         print(f"\n📬 共找到 {len(new_papers)} 篇新论文（时间窗口：最近 {used_days} 天）")
+        successful_ids = set()
         for p in new_papers:
-            send_to_feishu(p["title"], p["processed_summary"], p["link"], p["tag"])
+            if send_to_feishu(p["title"], p["processed_summary"], p["link"], p["tag"]):
+                successful_ids.add(p["id"])
+        updated_sent_ids.update(successful_ids)
 
     save_sent_ids(updated_sent_ids)
     print(f"\n✅ 任务完成！已记录论文总数：{len(updated_sent_ids)} 篇。")

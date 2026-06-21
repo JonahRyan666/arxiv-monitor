@@ -1,5 +1,6 @@
 .env.local
 sent_papers.json
 __pycache__/
+logs/
 *.pyc
 
