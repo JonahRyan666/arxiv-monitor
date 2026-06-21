@@ -52,6 +52,7 @@ SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "1"))
 TRANSLATION_VALIDATION_RETRIES = int(os.getenv("TRANSLATION_VALIDATION_RETRIES", "2"))
 MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "8"))
 JPSJ_TARGET_PER_RUN = int(os.getenv("JPSJ_TARGET_PER_RUN", "3"))
+JPSJ_BROWSER_COOKIE_FETCH = os.getenv("JPSJ_BROWSER_COOKIE_FETCH", "0") == "1"
 
 if not FEISHU_WEBHOOK_URL:
     print("❌ 错误：未设置环境变量 FEISHU_WEBHOOK_URL")
@@ -331,9 +332,84 @@ def is_placeholder_summary(summary):
         or summary == "无摘要。请仅根据题名判断。"
     )
 
-def enrich_jpsj_summary(title, summary):
+def fetch_browser_cookies_for_jpsj():
+    try:
+        import browser_cookie3
+    except Exception as e:
+        print(f"⚠️ 未启用浏览器 cookie 读取: {e}")
+        return None
+    for loader_name in ("edge", "chrome"):
+        loader = getattr(browser_cookie3, loader_name, None)
+        if not loader:
+            continue
+        try:
+            return loader(domain_name="journals.jps.jp")
+        except Exception as e:
+            print(f"⚠️ 读取 {loader_name} cookie 失败: {e}")
+    return None
+
+def extract_jpsj_abstract_from_html(html):
+    if not html or "Just a moment..." in html or "security verification" in html:
+        return ""
+    soup = BeautifulSoup(html, "html.parser")
+    for selector in (
+        "meta[name='description']",
+        ".hlFld-Abstract",
+        ".abstractSection",
+        ".abstract",
+        "#abstract",
+        "section.abstract",
+        "div.NLM_abstract",
+    ):
+        node = soup.select_one(selector)
+        if not node:
+            continue
+        text = node.get("content", "") if node.name == "meta" else node.get_text(" ", strip=True)
+        text = re.sub(r"\s+", " ", text).strip()
+        if len(text) > 80 and "cookie" not in text.lower():
+            return text
+
+    text = soup.get_text(" ", strip=True)
+    text = re.sub(r"\s+", " ", text)
+    match = re.search(
+        r"(We\s+(?:report|study|investigate|present|show|measure|demonstrate).+?)(?:©\d{4}|https://doi\.org|1\.\s*Introduction|References)",
+        text,
+        flags=re.I,
+    )
+    if match:
+        abstract = match.group(1).strip()
+        if len(abstract) > 80:
+            return abstract
+    return ""
+
+def fetch_jpsj_article_abstract(link):
+    if not JPSJ_BROWSER_COOKIE_FETCH:
+        return ""
+    cookies = fetch_browser_cookies_for_jpsj()
+    if cookies is None:
+        return ""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    try:
+        response = requests.get(link, headers=headers, cookies=cookies, timeout=30)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"⚠️ JPSJ DOI 页面摘要抓取失败 ({link}): {e}")
+        return ""
+    abstract = extract_jpsj_abstract_from_html(response.text)
+    if abstract:
+        print(f"    📄 使用 JPSJ 网页摘要: {abstract[:60]}...")
+    return abstract
+
+def enrich_jpsj_summary(title, summary, link=""):
     if not is_placeholder_summary(summary):
         return summary
+    page_summary = fetch_jpsj_article_abstract(link) if link else ""
+    if page_summary:
+        return page_summary
     arxiv_summary = fetch_arxiv_abstract_by_title(title)
     return arxiv_summary or summary
 
@@ -389,7 +465,7 @@ def fetch_jpsj_crossref_papers(keywords, since_dt):
                 papers.append({
                     "id": paper_id,
                     "title": title,
-                    "summary": enrich_jpsj_summary(title, summary),
+                    "summary": enrich_jpsj_summary(title, summary, link),
                     "link": link,
                 })
         except Exception as e:
@@ -448,7 +524,7 @@ def fetch_jpsj_papers(keywords, since_dt):
                 papers.append({
                     "id": paper_id,
                     "title": title,
-                    "summary": enrich_jpsj_summary(title, summary),
+                    "summary": enrich_jpsj_summary(title, summary, link),
                     "link": link,
                 })
             except Exception:

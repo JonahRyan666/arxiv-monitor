@@ -2,3 +2,4 @@ feedparser==6.0.10
 PyYAML>=6.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
+browser-cookie3>=0.20.1
