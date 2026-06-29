@@ -11,7 +11,7 @@ env:
 jobs:
   generate-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +32,8 @@ jobs:
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}   # 如果需要翻译，请设置此 secret；若不需要可删除
           SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V4-Pro' }}
           PYTHONUNBUFFERED: "1"
-          MAX_PAPERS_PER_RUN: "8"
-          JPSJ_TARGET_PER_RUN: "3"
+          MAX_PAPERS_PER_RUN: "12"
+          JPSJ_TARGET_PER_RUN: "8"
           SILICONFLOW_TIMEOUT: "30"
           SILICONFLOW_RETRIES: "1"
           TRANSLATION_VALIDATION_RETRIES: "2"

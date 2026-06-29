@@ -50,9 +50,13 @@ SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro"
 SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "30"))
 SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "1"))
 TRANSLATION_VALIDATION_RETRIES = int(os.getenv("TRANSLATION_VALIDATION_RETRIES", "2"))
-MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "8"))
-JPSJ_TARGET_PER_RUN = int(os.getenv("JPSJ_TARGET_PER_RUN", "3"))
+MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "12"))
+JPSJ_TARGET_PER_RUN = int(os.getenv("JPSJ_TARGET_PER_RUN", "8"))
 JPSJ_BROWSER_COOKIE_FETCH = os.getenv("JPSJ_BROWSER_COOKIE_FETCH", "0") == "1"
+ARXIV_TIMEOUT = int(os.getenv("ARXIV_TIMEOUT", "30"))
+ARXIV_RETRIES = int(os.getenv("ARXIV_RETRIES", "3"))
+ARXIV_QUERY_DELAY = float(os.getenv("ARXIV_QUERY_DELAY", "3"))
+ARXIV_RETRY_BASE_DELAY = float(os.getenv("ARXIV_RETRY_BASE_DELAY", "8"))
 
 if not FEISHU_WEBHOOK_URL:
     print("❌ 错误：未设置环境变量 FEISHU_WEBHOOK_URL")
@@ -66,16 +70,16 @@ ARXIV_TOPICS = [
         "queries": [
             'abs:"multiferroic"',
             'abs:"magnetoelectric"',
-            'abs:"multiferroic" abs:"solid state reaction"',
-            'abs:"multiferroic" abs:sintering',
-            'abs:"multiferroic" abs:"ceramic method"',
-            'abs:"multiferroic" abs:"chemical vapor transport"',
-            'abs:"multiferroic" abs:"CVT"',
-            'abs:"magnetoelectric" abs:"solid state reaction"',
-            'abs:"magnetoelectric" abs:sintering',
-            'abs:"magnetoelectric" abs:"ceramic method"',
-            'abs:"magnetoelectric" abs:"chemical vapor transport"',
-            'abs:"magnetoelectric" abs:"CVT"',
+            'abs:"multiferroic" AND abs:"solid state reaction"',
+            'abs:"multiferroic" AND abs:sintering',
+            'abs:"multiferroic" AND abs:"ceramic method"',
+            'abs:"multiferroic" AND abs:"chemical vapor transport"',
+            'abs:"multiferroic" AND abs:"CVT"',
+            'abs:"magnetoelectric" AND abs:"solid state reaction"',
+            'abs:"magnetoelectric" AND abs:sintering',
+            'abs:"magnetoelectric" AND abs:"ceramic method"',
+            'abs:"magnetoelectric" AND abs:"chemical vapor transport"',
+            'abs:"magnetoelectric" AND abs:"CVT"',
         ],
         "target_count": 5
     },
@@ -83,14 +87,14 @@ ARXIV_TOPICS = [
         "name": "【量子自旋液体 + 制备】",
         "queries": [
             'abs:"quantum spin liquid"',
-            'abs:"QSL" abs:"frustrated magnet"',
-            'abs:"spin liquid" abs:"geometric frustration"',
-            'abs:"quantum spin liquid" abs:"solid state reaction"',
-            'abs:"quantum spin liquid" abs:sintering',
-            'abs:"quantum spin liquid" abs:"chemical vapor transport"',
-            'abs:"quantum spin liquid" abs:"CVT"',
-            'abs:"frustrated magnet" abs:"solid state reaction"',
-            'abs:"frustrated magnet" abs:"single crystal growth"',
+            'abs:"QSL" AND abs:"frustrated magnet"',
+            'abs:"spin liquid" AND abs:"geometric frustration"',
+            'abs:"quantum spin liquid" AND abs:"solid state reaction"',
+            'abs:"quantum spin liquid" AND abs:sintering',
+            'abs:"quantum spin liquid" AND abs:"chemical vapor transport"',
+            'abs:"quantum spin liquid" AND abs:"CVT"',
+            'abs:"frustrated magnet" AND abs:"solid state reaction"',
+            'abs:"frustrated magnet" AND abs:"single crystal growth"',
         ],
         "target_count": 5
     },
@@ -99,11 +103,11 @@ ARXIV_TOPICS = [
         "queries": [
             'abs:"kagome"',
             'abs:"kagome lattice"',
-            'abs:"kagome" abs:"solid state reaction"',
-            'abs:"kagome" abs:sintering',
-            'abs:"kagome" abs:"chemical vapor transport"',
-            'abs:"kagome" abs:"CVT"',
-            'abs:"kagome" abs:"single crystal"',
+            'abs:"kagome" AND abs:"solid state reaction"',
+            'abs:"kagome" AND abs:sintering',
+            'abs:"kagome" AND abs:"chemical vapor transport"',
+            'abs:"kagome" AND abs:"CVT"',
+            'abs:"kagome" AND abs:"single crystal"',
         ],
         "target_count": 4
     },
@@ -128,13 +132,13 @@ ARXIV_TOPICS = [
     {
         "name": "【制备方法专题】",
         "queries": [
-            'abs:"solid state reaction" abs:"multiferroic"',
-            'abs:"solid state reaction" abs:"quantum spin liquid"',
-            'abs:"solid state reaction" abs:"kagome"',
-            'abs:"chemical vapor transport" abs:"multiferroic"',
-            'abs:"chemical vapor transport" abs:"quantum spin liquid"',
-            'abs:"chemical vapor transport" abs:"kagome"',
-            'abs:"flux growth" abs:"frustrated magnet"',
+            'abs:"solid state reaction" AND abs:"multiferroic"',
+            'abs:"solid state reaction" AND abs:"quantum spin liquid"',
+            'abs:"solid state reaction" AND abs:"kagome"',
+            'abs:"chemical vapor transport" AND abs:"multiferroic"',
+            'abs:"chemical vapor transport" AND abs:"quantum spin liquid"',
+            'abs:"chemical vapor transport" AND abs:"kagome"',
+            'abs:"flux growth" AND abs:"frustrated magnet"',
         ],
         "target_count": 3
     }
@@ -163,22 +167,39 @@ IOP_SEARCH_TERMS = [
 
 # JPSJ / Journal of the Physical Society of Japan 搜索词
 JPSJ_SEARCH_TERMS = [
+    "quantum spin liquid",
+    "spin liquid",
+    "Kitaev",
+    "Kitaev magnet",
+    "kagome",
+    "triangular lattice frustrated magnet",
+    "frustrated magnetism",
+    "frustrated magnetism neutron scattering",
+    "magnetoelectric effect",
+    "magnetoelectric coupling",
+    "magnetoelectric",
+    "multiferroic",
     "single crystal magnetoelectric",
     "single crystal multiferroic",
     "single crystal growth magnetoelectric",
+    "single crystal growth magnetic",
+    "single crystal neutron scattering",
+    "single crystal neutron diffraction",
     "floating zone magnetoelectric",
+    "floating zone frustrated magnet",
     "flux growth frustrated magnet",
+    "flux growth quantum spin liquid",
     "chemical vapor transport quantum spin liquid",
     "quantum spin liquid single crystal",
     "Kitaev single crystal",
     "kagome quantum spin liquid",
     "triangular lattice quantum spin liquid",
-    "frustrated magnetism neutron scattering",
 ]
 
 # 动态时间窗口配置（单位：天）
 TIME_WINDOWS = [7, 14, 30, 90]  # 依次扩大
 SENT_IDS_FILE = Path(__file__).parent / "sent_papers.json"
+LAST_ARXIV_QUERY_TS = 0.0
 
 # ==================== 工具函数 ====================
 def load_sent_ids():
@@ -196,12 +217,50 @@ def reached_run_limit(papers):
     return len(papers) >= MAX_PAPERS_PER_RUN
 
 # --- arXiv 相关 ---
-def query_arxiv_raw(query_str, max_results=30, timeout=30):
+def throttle_arxiv_query():
+    global LAST_ARXIV_QUERY_TS
+    elapsed = time.monotonic() - LAST_ARXIV_QUERY_TS
+    if elapsed < ARXIV_QUERY_DELAY:
+        time.sleep(ARXIV_QUERY_DELAY - elapsed)
+    LAST_ARXIV_QUERY_TS = time.monotonic()
+
+def query_arxiv_raw(query_str, max_results=30, timeout=None, retries=None):
     base_url = "https://export.arxiv.org/api/query"
     url = f"{base_url}?search_query={quote_plus(query_str)}&sortBy=submittedDate&sortOrder=descending&start=0&max_results={max_results}"
-    response = requests.get(url, timeout=timeout)
-    response.raise_for_status()
-    return response.text
+    timeout = ARXIV_TIMEOUT if timeout is None else timeout
+    retries = ARXIV_RETRIES if retries is None else retries
+    headers = {
+        "User-Agent": "arxiv-monitor/1.0 (mailto:research@example.com)",
+    }
+
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            throttle_arxiv_query()
+            response = requests.get(url, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.HTTPError as e:
+            last_error = e
+            status_code = e.response.status_code if e.response is not None else None
+            if status_code not in (408, 429, 500, 502, 503, 504) or attempt >= retries:
+                raise
+            retry_after = e.response.headers.get("Retry-After") if e.response is not None else None
+            try:
+                wait_seconds = float(retry_after) if retry_after else ARXIV_RETRY_BASE_DELAY * attempt
+            except ValueError:
+                wait_seconds = ARXIV_RETRY_BASE_DELAY * attempt
+            print(f"      arXiv 临时失败 HTTP {status_code}，{wait_seconds:.0f}s 后重试 ({attempt}/{retries})")
+            time.sleep(wait_seconds)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            last_error = e
+            if attempt >= retries:
+                raise
+            wait_seconds = ARXIV_RETRY_BASE_DELAY * attempt
+            print(f"      arXiv 网络超时/断开，{wait_seconds:.0f}s 后重试 ({attempt}/{retries})")
+            time.sleep(wait_seconds)
+
+    raise last_error
 
 def parse_arxiv_xml(xml_text, since_dt):
     entries = []
@@ -462,7 +521,7 @@ def fetch_jpsj_crossref_papers(keywords, since_dt):
             "filter": f"issn:{issn},from-pub-date:{since_dt.date().isoformat()}",
             "sort": "published",
             "order": "desc",
-            "rows": 20,
+            "rows": 50,
         }
         try:
             response = requests.get("https://api.crossref.org/works", params=params, headers=headers, timeout=20)
