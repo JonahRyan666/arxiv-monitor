@@ -11,7 +11,7 @@ env:
 jobs:
   generate-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
           MAX_PAPERS_PER_RUN: "12"
           JPSJ_TARGET_PER_RUN: "8"
-          SILICONFLOW_TIMEOUT: "30"
+          SILICONFLOW_TIMEOUT: "60"
           SILICONFLOW_RETRIES: "1"
           TRANSLATION_VALIDATION_RETRIES: "2"
         run: |

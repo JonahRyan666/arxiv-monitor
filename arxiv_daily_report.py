@@ -47,7 +47,7 @@ FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
 SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro")
-SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "30"))
+SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "60"))
 SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "1"))
 TRANSLATION_VALIDATION_RETRIES = int(os.getenv("TRANSLATION_VALIDATION_RETRIES", "2"))
 MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "12"))
@@ -624,6 +624,17 @@ def fetch_jpsj_papers(keywords, since_dt):
 def has_chinese(text):
     return bool(re.search(r"[\u4e00-\u9fff]", text or ""))
 
+def has_substantial_chinese(text, min_chinese_chars):
+    text = text or ""
+    chinese_count = len(re.findall(r"[\u4e00-\u9fff]", text))
+    latin_count = len(re.findall(r"[A-Za-z]", text))
+    language_chars = chinese_count + latin_count
+    return (
+        chinese_count >= min_chinese_chars
+        and language_chars > 0
+        and chinese_count / language_chars >= 0.35
+    )
+
 def is_usable_chinese_summary(summary):
     title_match = re.search(r"【中文题名】[ \t]*(.+)", summary or "")
     abstract_match = re.search(r"【摘要翻译】[ \t]*(.+)", summary or "", flags=re.S)
@@ -631,13 +642,17 @@ def is_usable_chinese_summary(summary):
         return False
     title_text = title_match.group(1).strip()
     abstract_text = abstract_match.group(1).strip()
-    return has_chinese(title_text) and has_chinese(abstract_text)
+    return (
+        len(re.findall(r"[\u4e00-\u9fff]", title_text)) >= 2
+        and has_substantial_chinese(abstract_text, min_chinese_chars=12)
+    )
 
 def summarize_with_siliconflow(title, text, tag=""):
     title = (title or "").strip()
     text = (text or "").strip()
     if is_placeholder_summary(text):
-        return f"【中文题名】未获取到摘要\n【英文题名】{title}\n【摘要翻译】未能从可访问的数据源获取该文摘要，跳过自动摘要翻译。"
+        print(f"⚠️ 跳过翻译：未获取到真实摘要 ({title[:60]})")
+        return None
     source_text = text
     if SILICONFLOW_API_KEY:
         prompt = (
@@ -667,7 +682,8 @@ def summarize_with_siliconflow(title, text, tag=""):
             data = {
                 "model": SILICONFLOW_MODEL,
                 "messages": [{"role": "user", "content": prompt + retry_instruction}],
-                "max_tokens": 450,
+                "max_tokens": 1200,
+                "temperature": 0.1,
             }
             try:
                 resp = requests.post("https://api.siliconflow.cn/v1/chat/completions", headers=headers, json=data, timeout=SILICONFLOW_TIMEOUT)
@@ -675,7 +691,7 @@ def summarize_with_siliconflow(title, text, tag=""):
                     result = resp.json()["choices"][0]["message"]["content"].strip()
                     if is_usable_chinese_summary(result):
                         return result
-                    last_error = "模型返回内容未通过中文题名校验"
+                    last_error = "模型返回内容未通过中文题名和摘要校验"
                 else:
                     last_error = f"HTTP {resp.status_code}: {resp.text[:300]}"
                     if resp.status_code not in (408, 429, 500, 502, 503, 504):
@@ -688,11 +704,11 @@ def summarize_with_siliconflow(title, text, tag=""):
                 print(f"⚠️ SiliconFlow 第 {attempt} 次调用失败: {last_error}，{wait_seconds} 秒后重试")
                 time.sleep(wait_seconds)
 
-        print(f"⚠️ SiliconFlow API 调用失败: {last_error}，使用原文摘要")
-        return f"【中文题名】翻译失败，见英文题名\n【英文题名】{title}\n【摘要翻译】自动翻译失败。英文摘要：{source_text[:600]}..."
+        print(f"⚠️ SiliconFlow 翻译失败，跳过本次推送: {last_error}")
+        return None
     else:
-        print("⚠️ 未设置环境变量 SILICONFLOW_API_KEY，使用原文摘要")
-        return f"【中文题名】未配置翻译，见英文题名\n【英文题名】{title}\n【摘要翻译】未配置 SiliconFlow API Key。英文摘要：{source_text[:600]}..."
+        print("⚠️ 未设置 SILICONFLOW_API_KEY，跳过本次推送")
+        return None
 
 # --- 飞书推送（支持签名）---
 def get_display_title(title, summary):
@@ -768,6 +784,8 @@ def search_papers_with_expanding_window():
                         continue
                     p["tag"] = "【JPSJ】"
                     p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
+                    if not p["processed_summary"]:
+                        continue
                     window_papers.append(p)
                     jpsj_collected += 1
                     if jpsj_collected >= JPSJ_TARGET_PER_RUN or reached_run_limit(window_papers):
@@ -791,6 +809,8 @@ def search_papers_with_expanding_window():
                                 print(f"    🧠 arXiv: {p['title'][:50]}...")
                                 p["tag"] = topic["name"]
                                 p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
+                                if not p["processed_summary"]:
+                                    continue
                                 window_papers.append(p)
                                 collected += 1
                                 if collected >= topic["target_count"] or reached_run_limit(window_papers):
@@ -813,6 +833,8 @@ def search_papers_with_expanding_window():
                         print(f"    🧠 IOP: {p['title'][:50]}...")
                         p["tag"] = "【IOP】"
                         p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
+                        if not p["processed_summary"]:
+                            continue
                         window_papers.append(p)
                         if reached_run_limit(window_papers):
                             break
@@ -847,6 +869,9 @@ if __name__ == "__main__":
         print(f"\n📬 共找到 {len(new_papers)} 篇新论文（时间窗口：最近 {used_days} 天）")
         successful_ids = set()
         for p in new_papers:
+            if not is_usable_chinese_summary(p["processed_summary"]):
+                print(f"⚠️ 中文摘要校验失败，取消推送: {p['title'][:60]}")
+                continue
             if send_to_feishu(p["title"], p["processed_summary"], p["link"], p["tag"]):
                 successful_ids.add(p["id"])
         updated_sent_ids.update(successful_ids)
