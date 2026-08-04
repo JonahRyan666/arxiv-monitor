@@ -30,13 +30,13 @@ jobs:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}   # 如果需要翻译，请设置此 secret；若不需要可删除
-          SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V4-Pro' }}
+          SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'tencent/Hunyuan-MT-7B' }}
+          SILICONFLOW_FALLBACK_MODEL: ${{ vars.SILICONFLOW_FALLBACK_MODEL || 'Qwen/Qwen3.5-9B' }}
           PYTHONUNBUFFERED: "1"
           MAX_PAPERS_PER_RUN: "12"
           JPSJ_TARGET_PER_RUN: "8"
           SILICONFLOW_TIMEOUT: "60"
-          SILICONFLOW_RETRIES: "1"
-          TRANSLATION_VALIDATION_RETRIES: "2"
+          SILICONFLOW_RETRIES: "0"
         run: |
           python arxiv_daily_report.py
 

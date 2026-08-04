@@ -46,10 +46,10 @@ JPSJ_RELEVANCE_TERMS = (
 FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL")
 FEISHU_SECRET = os.getenv("FEISHU_SECRET")
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
-SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V4-Pro")
+SILICONFLOW_MODEL = os.getenv("SILICONFLOW_MODEL", "tencent/Hunyuan-MT-7B")
+SILICONFLOW_FALLBACK_MODEL = os.getenv("SILICONFLOW_FALLBACK_MODEL", "Qwen/Qwen3.5-9B")
 SILICONFLOW_TIMEOUT = int(os.getenv("SILICONFLOW_TIMEOUT", "60"))
-SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "1"))
-TRANSLATION_VALIDATION_RETRIES = int(os.getenv("TRANSLATION_VALIDATION_RETRIES", "2"))
+SILICONFLOW_RETRIES = int(os.getenv("SILICONFLOW_RETRIES", "0"))
 MAX_PAPERS_PER_RUN = int(os.getenv("MAX_PAPERS_PER_RUN", "12"))
 JPSJ_TARGET_PER_RUN = int(os.getenv("JPSJ_TARGET_PER_RUN", "8"))
 JPSJ_BROWSER_COOKIE_FETCH = os.getenv("JPSJ_BROWSER_COOKIE_FETCH", "0") == "1"
@@ -57,6 +57,8 @@ ARXIV_TIMEOUT = int(os.getenv("ARXIV_TIMEOUT", "30"))
 ARXIV_RETRIES = int(os.getenv("ARXIV_RETRIES", "3"))
 ARXIV_QUERY_DELAY = float(os.getenv("ARXIV_QUERY_DELAY", "3"))
 ARXIV_RETRY_BASE_DELAY = float(os.getenv("ARXIV_RETRY_BASE_DELAY", "8"))
+TRANSLATION_AUTH_FAILED = False
+TRANSLATION_FAILED_TITLES = set()
 
 if not FEISHU_WEBHOOK_URL:
     print("❌ 错误：未设置环境变量 FEISHU_WEBHOOK_URL")
@@ -647,68 +649,83 @@ def is_usable_chinese_summary(summary):
         and has_substantial_chinese(abstract_text, min_chinese_chars=12)
     )
 
+def translate_text_with_siliconflow(text, field_name):
+    global TRANSLATION_AUTH_FAILED
+    if TRANSLATION_AUTH_FAILED or not SILICONFLOW_API_KEY:
+        return None
+
+    prompt = (
+        f"请把下面凝聚态物理论文的英文{field_name}忠实翻译成中文。"
+        "保留材料化学式、物理量、单位以及 Kitaev、Majorana、kagome 等必要专有名词，"
+        "不要解释、概括或补充信息，只输出中文译文。\n\n"
+        f"{text}"
+    )
+    headers = {"Authorization": f"Bearer {SILICONFLOW_API_KEY}", "Content-Type": "application/json"}
+    models = [model for model in dict.fromkeys((SILICONFLOW_MODEL, SILICONFLOW_FALLBACK_MODEL)) if model]
+
+    for model in models:
+        for attempt in range(SILICONFLOW_RETRIES + 1):
+            data = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 300 if field_name == "题名" else 1200,
+                "temperature": 0.1,
+            }
+            if model.startswith("Qwen/"):
+                data["enable_thinking"] = False
+
+            try:
+                resp = requests.post(
+                    "https://api.siliconflow.cn/v1/chat/completions",
+                    headers=headers,
+                    json=data,
+                    timeout=SILICONFLOW_TIMEOUT,
+                )
+                if resp.status_code == 200:
+                    result = resp.json()["choices"][0]["message"]["content"].strip()
+                    valid_translation = (
+                        len(re.findall(r"[\u4e00-\u9fff]", result)) >= 2
+                        if field_name == "题名"
+                        else has_substantial_chinese(result, min_chinese_chars=12)
+                    )
+                    if valid_translation:
+                        print(f"    ✅ {field_name}翻译成功: {model}")
+                        return result
+                    error = "返回内容未通过中文校验"
+                elif resp.status_code in (401, 403):
+                    TRANSLATION_AUTH_FAILED = True
+                    print(f"⚠️ SiliconFlow API Key 无效或无权限 (HTTP {resp.status_code})")
+                    return None
+                else:
+                    error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            except Exception as exc:
+                error = str(exc)
+
+            print(f"⚠️ {model} {field_name}翻译失败: {error}")
+            if attempt < SILICONFLOW_RETRIES:
+                time.sleep(5 * (attempt + 1))
+
+        if model != models[-1]:
+            print(f"    🔁 切换备用翻译模型: {SILICONFLOW_FALLBACK_MODEL}")
+    return None
+
 def summarize_with_siliconflow(title, text, tag=""):
     title = (title or "").strip()
     text = (text or "").strip()
     if is_placeholder_summary(text):
         print(f"⚠️ 跳过翻译：未获取到真实摘要 ({title[:60]})")
         return None
-    source_text = text
-    if SILICONFLOW_API_KEY:
-        prompt = (
-            "你是一位凝聚态物理和中子散射方向的科研助手。"
-            "请只做两件事：1）把英文题名翻译成中文；2）把英文摘要忠实翻译成中文。"
-            "不要写相关性判断，不要写推荐语，不要补充英文摘要之外的信息。"
-            "必须把英文题名翻译成中文；材料化学式、Kitaev、kagome、JPSJ 等专有名词可以保留原文，"
-            "但不要整句复制英文题名。"
-            "\n\n"
-            f"来源标签：{tag}\n"
-            f"英文题名：{title}\n"
-            f"英文摘要：{source_text}\n\n"
-            "输出格式：\n"
-            "【中文题名】...\n"
-            "【摘要翻译】..."
-        )
-        headers = {"Authorization": f"Bearer {SILICONFLOW_API_KEY}", "Content-Type": "application/json"}
-        last_error = None
-        max_attempts = SILICONFLOW_RETRIES + TRANSLATION_VALIDATION_RETRIES
-        for attempt in range(1, max_attempts + 1):
-            retry_instruction = ""
-            if attempt > 1:
-                retry_instruction = (
-                    "\n\n上一次输出未通过中文校验。请重新输出，确保【中文题名】不是英文原题，"
-                    "【摘要翻译】必须是中文；不要添加其他字段。"
-                )
-            data = {
-                "model": SILICONFLOW_MODEL,
-                "messages": [{"role": "user", "content": prompt + retry_instruction}],
-                "max_tokens": 1200,
-                "temperature": 0.1,
-            }
-            try:
-                resp = requests.post("https://api.siliconflow.cn/v1/chat/completions", headers=headers, json=data, timeout=SILICONFLOW_TIMEOUT)
-                if resp.status_code == 200:
-                    result = resp.json()["choices"][0]["message"]["content"].strip()
-                    if is_usable_chinese_summary(result):
-                        return result
-                    last_error = "模型返回内容未通过中文题名和摘要校验"
-                else:
-                    last_error = f"HTTP {resp.status_code}: {resp.text[:300]}"
-                    if resp.status_code not in (408, 429, 500, 502, 503, 504):
-                        break
-            except Exception as e:
-                last_error = str(e)
-
-            if attempt < max_attempts:
-                wait_seconds = attempt * 5
-                print(f"⚠️ SiliconFlow 第 {attempt} 次调用失败: {last_error}，{wait_seconds} 秒后重试")
-                time.sleep(wait_seconds)
-
-        print(f"⚠️ SiliconFlow 翻译失败，跳过本次推送: {last_error}")
-        return None
-    else:
+    if not SILICONFLOW_API_KEY:
         print("⚠️ 未设置 SILICONFLOW_API_KEY，跳过本次推送")
         return None
+
+    translated_title = translate_text_with_siliconflow(title, "题名")
+    if not translated_title:
+        return None
+    translated_abstract = translate_text_with_siliconflow(text, "摘要")
+    if not translated_abstract:
+        return None
+    return f"【中文题名】{translated_title}\n【摘要翻译】{translated_abstract}"
 
 # --- 飞书推送（支持签名）---
 def get_display_title(title, summary):
@@ -719,16 +736,16 @@ def get_display_title(title, summary):
 
 def send_to_feishu(title, summary, link, tag):
     display_title = get_display_title(title, summary)
+    message_rows = [[{"tag": "text", "text": summary}]]
+    if link and link != "#":
+        message_rows.append([{"tag": "a", "text": "查看全文", "href": link}])
     content = {
         "msg_type": "post",
         "content": {
             "post": {
                 "zh_cn": {
                     "title": f"{tag} {display_title}",
-                    "content": [
-                        [{"tag": "text", "text": summary}],
-                        [{"tag": "a", "text": "查看全文", "href": link}]
-                    ]
+                    "content": message_rows
                 }
             }
         }
@@ -785,6 +802,7 @@ def search_papers_with_expanding_window():
                     p["tag"] = "【JPSJ】"
                     p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                     if not p["processed_summary"]:
+                        TRANSLATION_FAILED_TITLES.add(p["title"])
                         continue
                     window_papers.append(p)
                     jpsj_collected += 1
@@ -810,6 +828,7 @@ def search_papers_with_expanding_window():
                                 p["tag"] = topic["name"]
                                 p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                                 if not p["processed_summary"]:
+                                    TRANSLATION_FAILED_TITLES.add(p["title"])
                                     continue
                                 window_papers.append(p)
                                 collected += 1
@@ -834,6 +853,7 @@ def search_papers_with_expanding_window():
                         p["tag"] = "【IOP】"
                         p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
                         if not p["processed_summary"]:
+                            TRANSLATION_FAILED_TITLES.add(p["title"])
                             continue
                         window_papers.append(p)
                         if reached_run_limit(window_papers):
@@ -861,9 +881,13 @@ if __name__ == "__main__":
     new_papers, used_days, updated_sent_ids = search_papers_with_expanding_window()
 
     if not new_papers:
-        print("\n❌ 所有时间窗口均未找到新论文。")
-        # 可选：发送一条提示消息到飞书
-        msg = "今日 arXiv & IOP & JPSJ 未找到符合条件的新论文。"
+        if TRANSLATION_AUTH_FAILED:
+            msg = "今日已检索到候选论文，但 SiliconFlow API Key 无效或无权限，未发送未翻译内容。"
+        elif TRANSLATION_FAILED_TITLES:
+            msg = f"今日已检索到 {len(TRANSLATION_FAILED_TITLES)} 篇候选论文，但主模型和备用模型均翻译失败。"
+        else:
+            msg = "今日 arXiv & IOP & JPSJ 未找到符合条件的新论文。"
+        print(f"\n⚠️ {msg}")
         send_to_feishu("系统通知", msg, "#", "【提示】")
     else:
         print(f"\n📬 共找到 {len(new_papers)} 篇新论文（时间窗口：最近 {used_days} 天）")
