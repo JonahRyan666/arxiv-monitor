@@ -35,6 +35,10 @@ jobs:
           PYTHONUNBUFFERED: "1"
           MAX_PAPERS_PER_RUN: "12"
           JPSJ_TARGET_PER_RUN: "8"
+          CROSSREF_TIMEOUT: "30"
+          CROSSREF_RETRIES: "2"
+          CROSSREF_QUERY_DELAY: "2"
+          CROSSREF_RETRY_BASE_DELAY: "10"
           SILICONFLOW_TIMEOUT: "60"
           SILICONFLOW_RETRIES: "0"
         run: |
