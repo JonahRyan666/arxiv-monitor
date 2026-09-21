@@ -174,19 +174,77 @@ IOP_SEARCH_TERMS = [
 # 动态时间窗口配置（单位：天）
 TIME_WINDOWS = [7, 14, 30, 90]  # 依次扩大
 SENT_IDS_FILE = Path(__file__).parent / "sent_papers.json"
+SENT_KEYS_FILE = Path(__file__).parent / "sent_paper_keys.json"
 LAST_ARXIV_QUERY_TS = 0.0
 
 # ==================== 工具函数 ====================
+def normalize_arxiv_id(paper_id):
+    """将 arXiv 的不同版本归并为同一篇论文。"""
+    value = (paper_id or "").strip().lower()
+    value = re.sub(r"^arxiv:", "", value)
+    return re.sub(r"v\d+$", "", value)
+
+def normalize_doi(value):
+    value = (value or "").strip().lower()
+    value = re.sub(r"^https?://(dx\.)?doi\.org/", "", value)
+    return value.rstrip(" .;,")
+
+def normalize_title(title):
+    """生成跨数据库可比较的标题键，避免标点和大小写造成重复。"""
+    value = clean_title_text(title).lower()
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+def paper_keys(paper):
+    """返回一篇论文的稳定去重键。"""
+    keys = set()
+    paper_id = (paper.get("id") or "").strip().lower()
+    if paper_id.startswith("arxiv:"):
+        keys.add("id:arxiv:" + normalize_arxiv_id(paper_id))
+    elif paper_id:
+        keys.add("id:" + paper_id)
+
+    doi = normalize_doi(paper.get("doi", ""))
+    if doi:
+        keys.add("doi:" + doi)
+
+    title = normalize_title(paper.get("title", ""))
+    if title:
+        keys.add("title:" + title)
+    return keys
+
+def normalize_stored_key(value):
+    """兼容旧版 sent_papers.json 中保存的原始 ID。"""
+    value = (value or "").strip().lower()
+    if value.startswith("arxiv:"):
+        return "id:arxiv:" + normalize_arxiv_id(value)
+    if value.startswith(("id:", "doi:", "title:")):
+        return value
+    return "id:" + value if value else ""
+
 def load_sent_ids():
     if SENT_IDS_FILE.exists():
         try:
-            return set(json.loads(SENT_IDS_FILE.read_text(encoding="utf-8")))
+            stored = json.loads(SENT_IDS_FILE.read_text(encoding="utf-8"))
+            if isinstance(stored, list):
+                return {key for key in (normalize_stored_key(v) for v in stored) if key}
         except:
-            return set()
+            pass
+    if SENT_KEYS_FILE.exists():
+        try:
+            stored = json.loads(SENT_KEYS_FILE.read_text(encoding="utf-8"))
+            return {key for key in stored if isinstance(key, str)}
+        except:
+            pass
     return set()
 
 def save_sent_ids(ids):
-    SENT_IDS_FILE.write_text(json.dumps(list(ids), indent=2), encoding="utf-8")
+    values = sorted(set(ids))
+    SENT_IDS_FILE.write_text(json.dumps(values, indent=2, ensure_ascii=False), encoding="utf-8")
+    SENT_KEYS_FILE.write_text(json.dumps(values, indent=2, ensure_ascii=False), encoding="utf-8")
+
+def paper_is_seen(paper, seen_keys):
+    return bool(paper_keys(paper) & seen_keys)
 
 def reached_run_limit(papers):
     return len(papers) >= MAX_PAPERS_PER_RUN
@@ -244,7 +302,7 @@ def parse_arxiv_xml(xml_text, since_dt):
             title = entry.split("<title>")[1].split("</title>")[0].strip()
             summary = entry.split("<summary>")[1].split("</summary>")[0].strip()
             link = entry.split('<link href="')[1].split('"')[0]
-            paper_id = "arxiv:" + link.split("/abs/")[-1]
+            paper_id = "arxiv:" + normalize_arxiv_id(link.split("/abs/")[-1])
             published = entry.split("<published>")[1].split("</published>")[0]
             pub_dt = datetime.strptime(published[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
             if pub_dt >= since_dt:
@@ -362,7 +420,7 @@ def fetch_iop_nsearch_papers(keywords, since_dt):
                 day, month, year = match.groups()
                 pub_date = datetime.strptime(f"{day} {month} {year}", "%d %b %Y").replace(tzinfo=timezone.utc)
                 if pub_date >= since_dt:
-                    paper_id = f"iop:{link.split('/')[-1]}"
+                    paper_id = f"iop:{link.split('/')[-1].lower()}"
                     papers.append({
                         "id": paper_id,
                         "title": title,
@@ -537,7 +595,7 @@ def fetch_jpsj_crossref_papers(since_dt):
                 if not is_relevant_jpsj_hit(title, clean_abstract):
                     continue
                 link = f"https://journals.jps.jp/doi/{doi}"
-                paper_id = "jpsj:" + doi.lower()
+                paper_id = "jpsj:" + normalize_doi(doi)
                 if paper_id in seen_ids:
                     continue
                 seen_ids.add(paper_id)
@@ -734,7 +792,7 @@ def search_papers_with_expanding_window():
         ]
         for catalog_paper in jpsj_papers:
             p = dict(catalog_paper)
-            if p["id"] in sent_ids or p["id"] in attempted_jpsj_ids:
+            if paper_is_seen(p, sent_ids) or p["id"] in attempted_jpsj_ids:
                 continue
             attempted_jpsj_ids.add(p["id"])
             print(f"    🧠 JPSJ: {p['title'][:50]}...")
@@ -764,7 +822,7 @@ def search_papers_with_expanding_window():
                         xml = query_arxiv_raw(q, max_results=25)
                         papers = parse_arxiv_xml(xml, since_dt)
                         for p in papers:
-                            if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                            if not paper_is_seen(p, sent_ids) and not any(paper_keys(p) & paper_keys(x) for x in window_papers):
                                 print(f"    🧠 arXiv: {p['title'][:50]}...")
                                 p["tag"] = topic["name"]
                                 p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
@@ -789,7 +847,7 @@ def search_papers_with_expanding_window():
             for terms in IOP_SEARCH_TERMS:
                 iop_papers = fetch_iop_nsearch_papers(terms, since_dt)
                 for p in iop_papers:
-                    if p["id"] not in sent_ids and p["id"] not in [x["id"] for x in window_papers]:
+                    if not paper_is_seen(p, sent_ids) and not any(paper_keys(p) & paper_keys(x) for x in window_papers):
                         print(f"    🧠 IOP: {p['title'][:50]}...")
                         p["tag"] = "【IOP】"
                         p["processed_summary"] = summarize_with_siliconflow(p["title"], p["summary"], p["tag"])
@@ -838,7 +896,7 @@ if __name__ == "__main__":
                 print(f"⚠️ 中文摘要校验失败，取消推送: {p['title'][:60]}")
                 continue
             if send_to_feishu(p["title"], p["processed_summary"], p["link"], p["tag"]):
-                successful_ids.add(p["id"])
+                successful_ids.update(paper_keys(p))
         updated_sent_ids.update(successful_ids)
 
     save_sent_ids(updated_sent_ids)
