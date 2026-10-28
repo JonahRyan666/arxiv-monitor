@@ -1,5 +1,7 @@
 # arXiv文献监控技能
 
+每日推送以仓库根目录的 `arxiv_daily_report.py`、`config.yaml` 和 README 为准。下面是早期草稿，不再描述当前的 GitHub Action。
+
 ## 概述
 自动从arXiv.org搜索磁电耦合和量子自旋液体相关的最新文献，支持定时推送。
 
