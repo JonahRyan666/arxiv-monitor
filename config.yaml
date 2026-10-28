@@ -1,72 +1,86 @@
-# arXiv文献监控系统配置
+# 每日实验文献日报配置。
+# 优先级：环境变量 / GitHub Actions variables > 本文件 > 脚本内置默认值。
+# 环境变量为空时视为未设置，因此 Actions 里只在仓库变量有值时才会覆盖这里。
 
 arxiv_monitor:
-  # 搜索关键词（中英文混合）
-  keywords:
-    - magnetoelectric coupling
-    - quantum spin liquid
-    - multiferroic
-    - topological insulator
-    - skyrmion
-    - spintronics
-    - condensed matter physics
-    - magnetic materials
-    - electronic structure
-    - strongly correlated systems
-    - 磁电耦合
-    - 量子自旋液体
-    - 多铁性
-    - 拓扑绝缘体
-    - 斯格明子
-    - 自旋电子学
-  
-  # arXiv分类
+  # arXiv API 分类。默认只看强关联和材料，避免纯理论分类灌进来。
   categories:
-    - cond-mat.mes-hall    # 介观系统和霍尔效应
-    - cond-mat.str-el     # 强关联电子系统
-    - cond-mat.mtrl-sci   # 材料科学
-    - cond-mat.supr-con   # 超导
-    - physics.app-ph      # 应用物理
-    - physics.chem-ph     # 化学物理
-  
-  # 搜索设置
-  search_settings:
-    max_results: 20        # 最大结果数
-    days_back: 1           # 搜索过去多少天
-    filter_strict: true    # 严格关键词过滤
-    include_abstract: true # 包含摘要
-  
-  # 报告设置
-  report_settings:
-    format: markdown       # 输出格式: markdown/text
-    include_stats: true    # 包含统计信息
-    categorize_by_keyword: true # 按关键词分类
-    max_authors_display: 3 # 最多显示作者数
-  
-  # 通知设置
-  notification_settings:
-    enabled: true          # 启用通知
-    channel: feishu        # 通知渠道: feishu/email
-    schedule: "09:00"      # 每天发送时间
-    only_new_papers: true  # 只发送新文献
-    min_papers_to_notify: 1 # 最少文献数才通知
-  
-  # 存储设置
-  storage_settings:
-    output_dir: ./reports  # 报告输出目录
-    keep_days: 30          # 保留多少天的报告
-    backup_enabled: true   # 启用备份
+    - cond-mat.str-el
+    - cond-mat.mtrl-sci
 
-# 用户偏好
-user_preferences:
-  name: 科研工作者
-  research_field: 凝聚态物理/磁电耦合/量子自旋液体
-  timezone: Asia/Shanghai
-  language: zh-CN
-  daily_reading_time: "09:00-11:00"
-  priority_keywords:
-    - magnetoelectric coupling
-    - quantum spin liquid
-  excluded_keywords:
-    - review
-    - tutorial
+  # 标题+摘要的廉价预筛。* 是通配符。大小写不敏感。
+  keywords:
+    - spin liquid
+    - frustrat*
+    - kagome
+    - pyrochlore
+    - triangular lattice
+    - honeycomb
+    - kitaev
+    - multiferroic
+    - magnetoelectric
+    - ferroelectric polarization
+    - quantum spin ice
+    - spin ice
+    - QSL
+
+  # 命中这些、且没有测量/样品证据时，预筛直接丢掉。
+  theory_markers:
+    - first-principles
+    - first principles
+    - DFT
+    - density functional
+    - ab initio
+    - we propose a model
+    - monte carlo
+    - tensor network
+    - DMRG
+
+  # 有这些证据时，即使摘要里也出现 DFT / 模型，仍交给模型筛选。
+  experiment_markers:
+    - single crystal
+    - polycrystal
+    - polycrystalline
+    - powder sample
+    - crystal growth
+    - were grown
+    - was grown
+    - grown by
+    - grown from
+    - synthesized
+    - chemical vapor transport
+    - CVT
+    - solid-state reaction
+    - solid state reaction
+    - solid-state synthesis
+    - high-pressure
+    - high pressure
+    - flux growth
+    - flux-grown
+    - flux method
+    - magnetization
+    - susceptibility
+    - specific heat
+    - heat capacity
+    - neutron
+    - muon
+    - muSR
+    - dielectric
+    - polarization
+    - MPMS
+    - PPMS
+    - SQUID
+    - sintered
+
+  max_lookback_days: 3
+  max_papers_per_day: 10
+  min_papers_per_day: 3
+  screen_batch_size: 4
+  screen_retries: 2
+  max_authors_display: 3
+
+  models:
+    # 筛选用的指令模型。失败时依次尝试 fallback、legacy。
+    screen: Qwen/Qwen3.6-27B
+    fallback: Qwen/Qwen3.5-9B
+    legacy: tencent/Hunyuan-MT-7B

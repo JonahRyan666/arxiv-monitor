@@ -1,5 +1,7 @@
 .env.local
 sent_papers.json
+digest_state.json
+digest.json
 __pycache__/
 logs/
 *.pyc

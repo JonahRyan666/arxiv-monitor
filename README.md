@@ -1,311 +1,112 @@
-# arXiv文献监控系统
+# 实验凝聚态每日文献日报
 
-一个自动化的arXiv文献监控系统，专门为凝聚态物理研究人员设计。系统每天自动搜索磁电耦合、量子自旋液体等相关领域的最新文献，并生成结构化报告。
+给做量子自旋液体、磁电耦合、多铁和阻挫磁体的实验同学用。每天从 arXiv（默认 `cond-mat.str-el` 与 `cond-mat.mtrl-sci`）和 JPSJ（Crossref）里挑**有样品、有测量**的论文，打分后合成**一条**飞书卡片推到群里。
 
-## ✨ 功能特性
+纯理论、只做 DFT、只提模型、只做蒙特卡洛 / 张量网络 / DMRG、以及只有分子束外延薄膜的论文不会进卡片。室温附近的相变优先。
 
-### 🔍 智能文献搜索
-- **多关键词监控**：同时监控6+个研究领域
-- **时间范围控制**：可设置搜索最近N天的文献
-- **智能过滤**：按arXiv分类自动过滤
-- **实时更新**：每天自动获取最新研究
+## 每天发生什么
 
-### 📊 结构化报告
-- **分类统计**：按研究领域自动分类
-- **详细摘要**：包含文献摘要和关键信息
-- **直接链接**：提供arXiv链接和PDF下载
-- **多种格式**：支持Markdown和纯文本输出
+工作流是 `.github/workflows/daily-report.yml`，北京时间 09:00 跑，也可以在 Actions 里手动跑。
 
-### ⏰ 自动化运行
-- **定时任务**：每天自动运行（可配置时间）
-- **云端部署**：支持阿里云等云平台
-- **稳定可靠**：24/7不间断监控
-- **错误处理**：自动重试和错误报告
+1. 从 `state` 分支取出 `digest_state.json`（已发送的 arXiv ID / DOI、题名，以及上次成功时间）。
+2. 检索上次成功之后的新论文，最多回看 3 天，用来盖住周末或漏跑。窗口向前多重叠 2 小时，避免时钟误差漏文；已经发过的不会再发。
+3. 用关键词做廉价预筛，丢掉明显不相关、以及“只有理论、没有样品测量”的摘要。
+4. 把剩下的交给 SiliconFlow 打分。模型要判断是不是实验、样品形态、生长方法、测了什么、居里-外斯温度、有序温度、阻挫指数 f、是否靠近室温，并写一句中文亮点和两三句中文摘要。
+5. 按下面的数量规则选文，发**一张**飞书互动卡片，并把当天的 `digest.json` 留成 Actions artifact。
+6. 发送成功后，把新的去重状态提交回 `state` 分支。这个分支不要合并进主分支。
 
-### 🔗 集成推送
-- **飞书推送**：自动发送日报到飞书
-- **文件保存**：自动保存历史报告
-- **日志记录**：完整的运行日志
-- **可扩展性**：易于添加新的推送渠道
+筛选希望同时满足三条：
 
-## 🚀 快速开始
+1. 有真实样品和测量（磁化率 / 比热 / 中子 / μSR / 介电或电极化）。
+2. 有物理亮点：f 大约大于 10、无长程有序、剩余熵、比热 T² 或 T 线性、磁场可调极化，或者有序 / 铁电转变靠近室温。
+3. 制备上做得到：助熔剂、CVT、固相或高温高压，前驱体不是剧毒，测量落在 MPMS / PPMS 常规范围。
 
-### 本地运行
+数量不是固定篇数：
+
+- 所有达标论文都发，最多 `MAX_PAPERS_PER_DAY` 篇（默认 10），按分数从高到低。
+- 达标不足 `MIN_PAPERS_PER_DAY` 篇（默认 3）时，用分数次高、但不是纯理论的论文补到 3 篇，卡片里标成 **备选（未完全达标）**，并带上分数。
+- 备选也不够时，有几篇发几篇。
+- 一篇非理论候选都没有时，发一句 `No qualifying papers today.`
+
+非实验论文和“只有 MBE 薄膜”的论文直接丢掉，不会拿来凑数。
+
+## 配置
+
+`config.yaml` 的 `arxiv_monitor` 段会被脚本读入。优先级是：
+
+**环境变量 / GitHub 仓库变量 > `config.yaml` > 脚本内置默认值**
+
+空的环境变量视为没设置，所以仓库变量留空时，以 `config.yaml` 为准。
+
+| 配置 | 作用 | 默认 |
+| --- | --- | --- |
+| `categories` | arXiv 分类 | `cond-mat.str-el`、`cond-mat.mtrl-sci` |
+| `keywords` | 标题+摘要预筛，`*` 是通配符 | 自旋液体、阻挫、kagome、多铁、磁电等 |
+| `theory_markers` | 没有测量证据就丢掉 | DFT、first-principles、Monte Carlo、DMRG 等 |
+| `experiment_markers` | 有样品或测量的证据 | flux、CVT、比热、中子、μSR 等 |
+| `max_lookback_days` | 最长回看 | 3 天 |
+| `max_papers_per_day` | 每天最多发几篇达标论文 | 10 |
+| `min_papers_per_day` | 不足时用备选补到几篇 | 3 |
+| `models.screen` | 筛选用的指令模型 | `Qwen/Qwen3.6-27B` |
+| `models.fallback` | 第一备用 | `Qwen/Qwen3.5-9B` |
+| `models.legacy` | 第二备用（原来的翻译模型） | `tencent/Hunyuan-MT-7B` |
+| `screen_batch_size` / `screen_retries` | 批量条数和 JSON 解析重试 | 4 / 2 |
+
+对应的环境变量：
+
+- `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`
+- `ARXIV_CATEGORIES`（逗号分隔）、`ARXIV_MAX_LOOKBACK_DAYS`
+- `SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`
+- `SCREEN_BATCH_SIZE`、`SCREEN_RETRIES`
+- `DRY_RUN=1`
+
+在仓库的 Settings → Secrets and variables → Actions → Variables 里设置同名变量，工作流会把它传给脚本，并覆盖 `config.yaml`。
+
+## 密钥
+
+沿用原来的三个，名字不要改：
+
+- `FEISHU_WEBHOOK_URL`
+- `FEISHU_SECRET`（飞书机器人签名；没签名的机器人可以留空）
+- `SILICONFLOW_API_KEY`
+
+可选。两个都设置时，脚本会把当天的 digest JSON POST 出去，请求头是 `X-Signature: sha256=<对原始 body 做 HMAC-SHA256 的十六进制>`。缺任何一个就跳过，不报错：
+
+- `RESULTS_WEBHOOK_URL`
+- `RESULTS_WEBHOOK_SECRET`
+
+日志里不会打印这些值。
+
+## state 分支
+
+`sent_papers.json` 在 `.gitignore` 里，以前的 artifact 也不会在下次运行时还原，所以同一篇会天天重复。现在改成：
+
+- 状态文件是 `digest_state.json`，只放已发送的 arXiv ID（去掉 `v1`/`v2`）、DOI、题名和上次成功时间。
+- 工作流有 `contents: write`。每次发送成功后，把这个文件提交到单独的 `state` 分支。
+- 下次运行开始时再把该文件取回来。
+- 已经发过的论文不会再发。arXiv 新版本和后来出现的 DOI 也会对上。
+- 筛选接口临时失败的论文会记在 `pending` 里，下次按 ID 再试，最多三次。
+
+不要把 `state` 合并进主分支，也不要给它加“必须走 Pull Request”的保护规则，否则 Actions 推不上去。第一次成功跑完，这个分支会自动出现。
+
+## 手动跑和演练
+
+Actions 页面选 **Daily arXiv Report** → **Run workflow**。勾上 dry run 时设置 `DRY_RUN=1`：照常检索和筛选，把飞书卡片 JSON 打到日志里，不推送，也不改 `state`。
+
+本地：
+
 ```bash
-# 克隆项目
-git clone https://github.com/你的用户名/arxiv-monitor.git
-cd arxiv-monitor
-
-# 安装依赖
-pip install feedparser
-
-# 测试运行
-python scripts/arxiv_simple.py
-```
-
-### 云端部署（阿里云）
-详细部署指南请查看：[DEPLOY_TO_ALIYUN.md](DEPLOY_TO_ALIYUN.md)
-
-## 📁 项目结构
-
-```
-arxiv-monitor/
-├── README.md                    # 项目说明
-├── DEPLOY_TO_ALIYUN.md         # 阿里云部署指南
-├── config.yaml                  # 配置文件
-├── requirements.txt             # Python依赖
-├── scripts/                     # 脚本目录
-│   ├── arxiv_search.py         # 核心搜索脚本
-│   ├── arxiv_daily_report.py   # 日报生成器
-│   ├── arxiv_simple.py         # 测试脚本
-│   ├── setup_arxiv_monitor.py  # 系统设置
-│   ├── test_network_simple.py  # 网络测试
-│   └── arxiv_real_search.py    # 真实API搜索
-├── reports/                     # 报告保存目录
-└── logs/                       # 日志目录
-```
-
-## ⚙️ 配置说明
-
-### 基本配置
-编辑 `config.yaml` 文件：
-
-```yaml
-# 搜索配置
-search:
-  keywords:
-    - "quantum spin liquid"      # 量子自旋液体
-    - "magnetoelectric coupling" # 磁电耦合
-    - "multiferroic"             # 多铁性
-    - "topological insulator"    # 拓扑绝缘体
-    - "skyrmion"                 # 斯格明子
-    - "spintronics"              # 自旋电子学
-  
-  # 搜索参数
-  days: 7           # 搜索最近7天
-  max_results: 10   # 每关键词最多10篇
-  
-# 输出配置
-output:
-  format: "markdown"  # 输出格式：markdown 或 text
-  save_to_file: true  # 是否保存到文件
-  report_dir: "./reports"  # 报告保存目录
-  
-# 飞书推送配置
-feishu:
-  enable: false      # 是否启用飞书推送
-  webhook: ""        # 飞书webhook URL
-  
-# 定时任务配置
-cron:
-  enable: true       # 是否启用定时任务
-  schedule: "0 9 * * *"  # 每天9点运行
-  timezone: "Asia/Shanghai"  # 时区
-```
-
-### 自定义关键词
-你可以添加自己的研究关键词：
-
-```yaml
-search:
-  keywords:
-    - "你的研究关键词1"
-    - "你的研究关键词2"
-    - "你的研究关键词3"
-```
-
-## 📖 使用方法
-
-### 1. 测试运行
-```bash
-# 简单测试
-python scripts/arxiv_simple.py
-
-# 网络测试
-python scripts/test_network_simple.py
-```
-
-### 2. 手动搜索
-```bash
-# 搜索特定关键词
-python scripts/arxiv_search.py --keywords "quantum spin liquid" --days 30
-
-# 生成日报
-python scripts/arxiv_daily_report.py --days 1 --save
-```
-
-### 3. 设置定时任务
-```bash
-# 使用系统设置脚本
-python scripts/setup_arxiv_monitor.py --schedule "09:00"
-```
-
-### 4. 查看报告
-报告会自动保存到 `reports/` 目录，文件名格式为：
-```
-arxiv_report_YYYYMMDD_HHMMSS.md
-```
-
-## 🔧 脚本说明
-
-### `arxiv_search.py`
-核心搜索脚本，使用arXiv官方API搜索文献。
-
-**参数：**
-- `--keywords`: 搜索关键词（多个用逗号分隔）
-- `--days`: 搜索最近几天（默认7）
-- `--max_results`: 每关键词最多结果数（默认10）
-- `--save`: 保存结果到文件
-
-### `arxiv_daily_report.py`
-日报生成器，生成每日文献监控报告。
-
-**参数：**
-- `--days`: 搜索最近几天（默认1）
-- `--save`: 保存报告到文件
-- `--send`: 发送报告到飞书（需配置webhook）
-
-### `arxiv_simple.py`
-测试脚本，使用示例数据快速测试系统功能。
-
-### `setup_arxiv_monitor.py`
-系统设置脚本，帮助配置定时任务和其他设置。
-
-### `test_network_simple.py`
-网络测试脚本，检查arXiv API连接状态。
-
-## 🌐 部署到云端
-
-### 为什么选择云端部署？
-1. **稳定性**：24/7不间断运行
-2. **可靠性**：不受本地电脑影响
-3. **自动化**：定时任务更可靠
-4. **可扩展**：易于添加新功能
-
-### 支持的云平台
-- **阿里云Coding Plan**（推荐）
-- 腾讯云CloudBase
-- 华为云FunctionGraph
-- 其他支持Python的云函数服务
-
-详细部署指南请查看：[DEPLOY_TO_ALIYUN.md](DEPLOY_TO_ALIYUN.md)
-
-## 🐛 故障排除
-
-### 常见问题
-
-#### Q1: 网络连接失败
-**症状**：`Connection timeout` 或 `URLError`
-**解决**：
-```bash
-# 测试网络连接
-python scripts/test_network_simple.py
-
-# 如果失败，检查：
-# 1. 网络连接是否正常
-# 2. 防火墙是否阻止访问
-# 3. arXiv API是否正常
-```
-
-#### Q2: 依赖安装失败
-**症状**：`ModuleNotFoundError: No module named 'feedparser'`
-**解决**：
-```bash
-# 重新安装依赖
-pip install --upgrade pip
-pip install feedparser==6.0.10
-```
-
-#### Q3: 定时任务不执行
-**症状**：报告没有按时生成
-**解决**：
-1. 检查定时任务配置是否正确
-2. 查看系统日志
-3. 手动运行测试是否正常
-
-#### Q4: 飞书推送失败
-**症状**：报告没有发送到飞书
-**解决**：
-1. 检查webhook URL是否正确
-2. 检查网络是否能访问飞书
-3. 查看错误日志
-
-### 日志查看
-```bash
-# 查看运行日志
-cat logs/arxiv_monitor.log
-
-# 查看错误日志
-cat logs/error.log
-```
-
-## 🔄 更新维护
-
-### 更新代码
-```bash
-# 从GitHub拉取最新代码
-git pull origin main
-
-# 更新依赖
 pip install -r requirements.txt
+DRY_RUN=1 python arxiv_daily_report.py
+python -m unittest test_digest_logic.py test_jpsj_crossref.py
 ```
 
-### 备份数据
-```bash
-# 备份报告
-tar -czf reports_backup_$(date +%Y%m%d).tar.gz reports/
+本地演练同样需要 `SILICONFLOW_API_KEY` 才会真正打分。没有达标论文时，日志里会看到 `No qualifying papers today.`
 
-# 备份配置
-cp config.yaml config_backup_$(date +%Y%m%d).yaml
-```
+## 你需要确认的一次性设置
 
-## 📈 扩展功能
-
-### 计划中的功能
-1. **文献评分系统**：基于引用和影响力的自动评分
-2. **研究趋势分析**：可视化研究热点变化
-3. **个性化推荐**：基于阅读历史的智能推荐
-4. **多平台推送**：支持微信、钉钉、邮件等
-
-### 自定义开发
-如果你需要定制功能：
-1. 修改 `config.yaml` 配置文件
-2. 扩展 `arxiv_search.py` 搜索逻辑
-3. 添加新的输出格式
-4. 集成其他文献数据库
-
-## 🤝 贡献指南
-
-欢迎贡献代码！请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
-
-## 🙏 致谢
-
-- **arXiv.org**：提供开放的文献数据库
-- **康奈尔大学**：维护arXiv平台
-- **feedparser库**：简化RSS/Atom解析
-- **所有贡献者**：感谢你们的支持和贡献
-
-## 📞 联系支持
-
-如有问题或建议，请：
-1. 查看 [DEPLOY_TO_ALIYUN.md](DEPLOY_TO_ALIYUN.md) 部署指南
-2. 检查常见问题解答
-3. 提交 Issue
-4. 联系开发者
-
----
-
-**让文献监控变得简单高效！** 🎯
-
-*最后更新：2026-02-27*
-*版本：v1.0*
+1. 仓库 Actions 允许这个工作流写内容。文件里已经写了 `permissions: contents: write`。如果组织把 `GITHUB_TOKEN` 锁成只读，要在仓库 Settings → Actions → General 里改成 Read and write，或者允许工作流自己声明写权限。
+2. 三个原有密钥还在：`FEISHU_WEBHOOK_URL`、`FEISHU_SECRET`、`SILICONFLOW_API_KEY`。
+3. 想改每天篇数或模型时，改 `config.yaml`，或者设置仓库变量 `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`、`SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`。
+4. 只有在你另外要收 JSON 时，才添加 `RESULTS_WEBHOOK_URL` 和 `RESULTS_WEBHOOK_SECRET`。
+5. `state` 分支留给机器人，不要合并，也不要要求评审才能推送。

@@ -4,17 +4,51 @@ on:
   schedule:
     - cron: '00 01 * * *'          # 每天北京时间 09:00
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "只打印飞书卡片，不推送，也不更新 state 分支"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: literature-digest-state
+  cancel-in-progress: false
 
 jobs:
   generate-report:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # 仓库变量未设置时为空，脚本会回退到 config.yaml，再回退到内置默认值。
+      MAX_PAPERS_PER_DAY: ${{ vars.MAX_PAPERS_PER_DAY }}
+      MIN_PAPERS_PER_DAY: ${{ vars.MIN_PAPERS_PER_DAY }}
+      SILICONFLOW_SCREEN_MODEL: ${{ vars.SILICONFLOW_SCREEN_MODEL }}
+      SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL }}
+      SILICONFLOW_FALLBACK_MODEL: ${{ vars.SILICONFLOW_FALLBACK_MODEL }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true && '1' || '0' }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore digest state
+        run: |
+          set -euo pipefail
+          if git fetch --depth=1 origin state && git cat-file -e origin/state:digest_state.json; then
+            git checkout origin/state -- digest_state.json
+            git reset -q HEAD -- digest_state.json || true
+            echo "Restored digest_state.json from the state branch."
+          else
+            echo "No state branch yet; this run starts with empty history."
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,30 +56,64 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Run arXiv monitor
+      - name: Run literature digest
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
-          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}   # 如果需要翻译，请设置此 secret；若不需要可删除
-          SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'tencent/Hunyuan-MT-7B' }}
-          SILICONFLOW_FALLBACK_MODEL: ${{ vars.SILICONFLOW_FALLBACK_MODEL || 'Qwen/Qwen3.5-9B' }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          RESULTS_WEBHOOK_URL: ${{ secrets.RESULTS_WEBHOOK_URL }}
+          RESULTS_WEBHOOK_SECRET: ${{ secrets.RESULTS_WEBHOOK_SECRET }}
           PYTHONUNBUFFERED: "1"
-          MAX_PAPERS_PER_RUN: "12"
-          JPSJ_TARGET_PER_RUN: "8"
           CROSSREF_TIMEOUT: "30"
           CROSSREF_RETRIES: "2"
           CROSSREF_QUERY_DELAY: "2"
           CROSSREF_RETRY_BASE_DELAY: "10"
-          SILICONFLOW_TIMEOUT: "60"
-          SILICONFLOW_RETRIES: "0"
-        run: |
-          python arxiv_daily_report.py
+          SILICONFLOW_TIMEOUT: "120"
+          ARXIV_TIMEOUT: "30"
+          ARXIV_RETRIES: "3"
+          ARXIV_QUERY_DELAY: "3"
+        run: python arxiv_daily_report.py
 
-      - name: Upload sent_papers.json (optional)
+      - name: Upload digest artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sent-papers
-          path: sent_papers.json
+          name: daily-digest
+          path: |
+            digest.json
+            digest_state.json
+          if-no-files-found: ignore
+
+      - name: Persist digest state
+        if: success() && env.DRY_RUN != '1'
+        run: |
+          set -euo pipefail
+          if [ "${DRY_RUN:-0}" = "1" ]; then
+            echo "Dry run; not updating the state branch."
+            exit 0
+          fi
+          if [ ! -f digest_state.json ]; then
+            echo "digest_state.json was not written; skip state update."
+            exit 0
+          fi
+          cp digest_state.json /tmp/digest_state.json
+          rm -f digest_state.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git reset --hard
+          if git fetch --depth=1 origin state; then
+            git checkout -B state origin/state
+          else
+            git checkout --orphan state
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp /tmp/digest_state.json digest_state.json
+          git add -f digest_state.json
+          if git diff --cached --quiet; then
+            echo "State unchanged."
+          else
+            git commit -m "Update literature digest state"
+          fi
+          git push origin HEAD:state
