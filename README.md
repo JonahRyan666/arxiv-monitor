@@ -11,24 +11,23 @@
 1. 从 `state` 分支取出 `digest_state.json`（已发送的 arXiv ID / DOI、题名，以及上次成功时间）。
 2. 检索上次成功之后的新论文，最多回看 3 天，用来盖住周末或漏跑。窗口向前多重叠 2 小时，避免时钟误差漏文；已经发过的不会再发。
 3. 用关键词做廉价预筛，丢掉明显不相关、以及“只有理论、没有样品测量”的摘要。
-4. 把剩下的交给 SiliconFlow 打分。模型要判断是不是实验、样品形态、生长方法、测了什么、居里-外斯温度、有序温度、阻挫指数 f、是否靠近室温，并写一句中文亮点和两三句中文摘要。
+4. 把关键词命中最多的若干篇（默认 16 篇）交给 SiliconFlow。仍然只看摘要，不读全文，并按批请求。模型判断是不是实验、样品形态、生长方法、测了什么、居里-外斯温度、有序温度、阻挫指数 f、是否靠近室温，并写一句中文亮点和两三句中文摘要。
 5. 按下面的数量规则选文，发**一张**飞书互动卡片，并把当天的 `digest.json` 留成 Actions artifact。
 6. 发送成功后，把新的去重状态提交回 `state` 分支。这个分支不要合并进主分支。
 
-筛选希望同时满足三条：
+达标条件比第一版松：实验论文只要有真实样品和相关物理就入选，生长方法没写清楚也不淘汰。分数大约 4 分及以上、并且看得到样品的，也会算达标。纯理论、只做 DFT / 模型 / 蒙特卡洛 / 张量网络 / DMRG、以及只有分子束外延薄膜的论文仍然直接丢掉。
 
-1. 有真实样品和测量（磁化率 / 比热 / 中子 / μSR / 介电或电极化）。
-2. 有物理亮点：f 大约大于 10、无长程有序、剩余熵、比热 T² 或 T 线性、磁场可调极化，或者有序 / 铁电转变靠近室温。
-3. 制备上做得到：助熔剂、CVT、固相或高温高压，前驱体不是剧毒，测量落在 MPMS / PPMS 常规范围。
+数量：
 
-数量不是固定篇数：
+- 达标论文按分数从高到低都发，最多 `MAX_PAPERS_PER_DAY` 篇（默认 10）。
+- 达标不足 `MIN_PAPERS_PER_DAY` 篇（默认 5）时，先用模型打了分但没达标的论文补，再用还没送给模型的关键词候选补，补到 5 篇。
+- 补位时如果下一篇和最后一篇分数接近或并列，可以多收 1 篇，当天最多 6 篇。达标本身超过 5 篇时，不受这 6 篇限制，最多仍是 10 篇。
+- 补进来的都标成 **备选**。有模型分数就写上分数；只靠关键词进来的不写分数。
+- 一篇候选都没有时，发一句 `No qualifying papers today.`
 
-- 所有达标论文都发，最多 `MAX_PAPERS_PER_DAY` 篇（默认 10），按分数从高到低。
-- 达标不足 `MIN_PAPERS_PER_DAY` 篇（默认 3）时，用分数次高、但不是纯理论的论文补到 3 篇，卡片里标成 **备选（未完全达标）**，并带上分数。
-- 备选也不够时，有几篇发几篇。
-- 一篇非理论候选都没有时，发一句 `No qualifying papers today.`
+卡片里每篇有编号 `#1`、`#2`…… 末尾有一段讨论提示。群里可以直接回复，例如 `#2 追 / #4 细读 / #5 跳过`。
 
-非实验论文和“只有 MBE 薄膜”的论文直接丢掉，不会拿来凑数。
+飞书自定义机器人的 webhook **只能发、不能收**。这个仓库不会、也收不到群里的回复。要自动读回复，需要另外做一个带事件订阅的飞书应用机器人，而不是现在这个 webhook。
 
 ## 配置
 
@@ -45,8 +44,9 @@
 | `theory_markers` | 没有测量证据就丢掉 | DFT、first-principles、Monte Carlo、DMRG 等 |
 | `experiment_markers` | 有样品或测量的证据 | flux、CVT、比热、中子、μSR 等 |
 | `max_lookback_days` | 最长回看 | 3 天 |
-| `max_papers_per_day` | 每天最多发几篇达标论文 | 10 |
-| `min_papers_per_day` | 不足时用备选补到几篇 | 3 |
+| `max_papers_per_day` | 达标论文每天最多发几篇 | 10 |
+| `min_papers_per_day` | 不足时用备选补到几篇 | 5 |
+| `screen_pool` | 送给模型的预筛上限，其余可作未评分备选 | 16 |
 | `models.screen` | 筛选用的指令模型 | `Qwen/Qwen3.6-27B` |
 | `models.fallback` | 第一备用 | `Qwen/Qwen3.5-9B` |
 | `models.legacy` | 第二备用（原来的翻译模型） | `tencent/Hunyuan-MT-7B` |
@@ -107,6 +107,6 @@ python -m unittest test_digest_logic.py test_jpsj_crossref.py
 
 1. 仓库 Actions 允许这个工作流写内容。文件里已经写了 `permissions: contents: write`。如果组织把 `GITHUB_TOKEN` 锁成只读，要在仓库 Settings → Actions → General 里改成 Read and write，或者允许工作流自己声明写权限。
 2. 三个原有密钥还在：`FEISHU_WEBHOOK_URL`、`FEISHU_SECRET`、`SILICONFLOW_API_KEY`。
-3. 想改每天篇数或模型时，改 `config.yaml`，或者设置仓库变量 `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`、`SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`。
+3. 想改每天篇数或模型时，改 `config.yaml`，或者设置仓库变量 `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`、`SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`。如果之前把 `MIN_PAPERS_PER_DAY` 设成了 3，请改成 5 或删掉，否则会盖过配置文件。
 4. 只有在你另外要收 JSON 时，才添加 `RESULTS_WEBHOOK_URL` 和 `RESULTS_WEBHOOK_SECRET`。
 5. `state` 分支留给机器人，不要合并，也不要要求评审才能推送。

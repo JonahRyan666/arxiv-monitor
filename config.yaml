@@ -9,6 +9,7 @@ arxiv_monitor:
     - cond-mat.mtrl-sci
 
   # 标题+摘要的廉价预筛。* 是通配符。大小写不敏感。
+  # 略宽于第一版，避免一天只剩个位数候选。
   keywords:
     - spin liquid
     - frustrat*
@@ -19,9 +20,20 @@ arxiv_monitor:
     - kitaev
     - multiferroic
     - magnetoelectric
+    - ferroelectric
     - ferroelectric polarization
+    - electric polarization
+    - magnetodielectric
     - quantum spin ice
     - spin ice
+    - quantum magnet
+    - helimagnet*
+    - spiral magnet
+    - noncollinear
+    - curie-weiss
+    - spinon
+    - valence bond
+    - spin gap
     - QSL
 
   # 命中这些、且没有测量/样品证据时，预筛直接丢掉。
@@ -74,9 +86,11 @@ arxiv_monitor:
 
   max_lookback_days: 3
   max_papers_per_day: 10
-  min_papers_per_day: 3
+  min_papers_per_day: 5
   screen_batch_size: 4
   screen_retries: 2
+  # 关键词命中最多的这几篇才送给模型；其余留作未评分备选。
+  screen_pool: 16
   max_authors_display: 3
 
   models:
