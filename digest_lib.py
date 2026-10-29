@@ -42,21 +42,27 @@ DEFAULT_FALLBACK_MODEL = "Qwen/Qwen3.5-9B"
 DEFAULT_LEGACY_MODEL = "tencent/Hunyuan-MT-7B"
 DEFAULT_MAX_PAPERS = 10
 DEFAULT_MIN_PAPERS = 5
-DEFAULT_LOOKBACK_DAYS = 3
+DEFAULT_LOOKBACK_DAYS = 6
 DEFAULT_BATCH_SIZE = 4
 DEFAULT_SCREEN_RETRIES = 2
-DEFAULT_SCREEN_POOL = 16
+DEFAULT_SCREEN_POOL = 36
 DEFAULT_MAX_AUTHORS = 3
-PASS_SCORE = 4.0
+PASS_SCORE = 6.0
 TOPUP_LIMIT = 6
 CLOSE_SCORE_GAP = 1.0
 WINDOW_OVERLAP = timedelta(hours=2)
 MAX_PENDING_ATTEMPTS = 3
 MAX_STORED_TITLES = 4000
+# LLM screening results are cached by paper id so the rolling lookback window
+# does not pay to re-score (or re-reject) the same paper every day.
+SCREEN_CACHE_DAYS = 12
+MAX_SCREEN_CACHE = 3000
 
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
 ARXIV_NS = "{http://arxiv.org/schemas/atom}"
 
+# Core topics of the reader: frustrated magnets / QSL / multiferroic &
+# magnetoelectric materials. Weight 4 per hit (x2 in the title).
 DEFAULT_KEYWORDS = (
     "spin liquid",
     "frustrat*",
@@ -65,24 +71,153 @@ DEFAULT_KEYWORDS = (
     "triangular lattice",
     "honeycomb",
     "kitaev",
+    "spin ice",
     "multiferroic",
     "magnetoelectric",
-    "ferroelectric",
-    "ferroelectric polarization",
-    "electric polarization",
     "magnetodielectric",
-    "quantum spin ice",
-    "spin ice",
-    "quantum magnet",
-    "helimagnet*",
-    "spiral magnet",
-    "noncollinear",
-    "curie-weiss",
+    "spin-driven polarization",
+    "polar magnet",
+    "shastry-sutherland",
+    "magnetization plateau",
     "spinon",
     "valence bond",
-    "spin gap",
     "QSL",
 )
+
+# Broader quantum / bulk magnetism. Weight 2 per hit (x2 in the title).
+# A paper needs a core or secondary hit (or a polar hit) to be a candidate.
+DEFAULT_SECONDARY_KEYWORDS = (
+    "antiferromagnet*",
+    "ferrimagnet*",
+    "quantum magnet",
+    "magnetic order",
+    "long-range order",
+    "spin chain",
+    "spin ladder",
+    "dimer*",
+    "helimagnet*",
+    "helical",
+    "spiral magnet",
+    "cycloid*",
+    "chiral magnet",
+    "skyrmion*",
+    "noncollinear",
+    "noncoplanar",
+    "curie-weiss",
+    "spin gap",
+    "spin glass",
+    "magnon*",
+    "metamagnet*",
+    "spin-flop",
+    "spin reorientation",
+    "magnetostructural",
+    "magnetoelastic",
+    "neel",
+    "Ising",
+    "Heisenberg",
+    "Dzyaloshinskii",
+    "crystal field",
+    "local moment",
+    "rare-earth",
+    "iridate*",
+    "spin-orbit coupled",
+    "magnetic susceptibility",
+    "spin dynamics",
+    "spin wave",
+    "neutron scattering",
+    "neutron diffraction",
+    "musr",
+    "electron spin resonance",
+    "altermagnet*",
+    "van der waals magnet",
+    "haldane",
+)
+
+# Polar / ferroelectric words. Weight 1 alone (pure ferroelectrics rank low);
+# together with a magnetism hit they add MAGNETO_POLAR_BONUS.
+DEFAULT_POLAR_KEYWORDS = (
+    "ferroelectric",
+    "electric polarization",
+    "pyroelectric",
+    "dielectric",
+    "relaxor",
+    "polar",
+)
+
+# Applied / off-topic signals. Each hit costs NEGATIVE_WEIGHT.
+DEFAULT_NEGATIVE_KEYWORDS = (
+    "thin film",
+    "epitaxial",
+    "heterostructure",
+    "sputter*",
+    "pulsed laser deposition",
+    "PLD",
+    "molecular beam",
+    "MBE",
+    "device",
+    "transistor",
+    "spintronic*",
+    "spin-orbit torque",
+    "terahertz emission",
+    "catalys*",
+    "photocatalys*",
+    "photoanode",
+    "photoelectrochemical",
+    "water splitting",
+    "hydrogen evolution",
+    "solar cell",
+    "photovoltaic*",
+    "battery",
+    "batteries",
+    "cathode",
+    "anode",
+    "electrolyte*",
+    "memristor*",
+    "synaptic",
+    "CMOS",
+    "machine learning",
+    "neural network",
+    "deep learning",
+    "dataset",
+    "graphene",
+    "moire",
+    "monolayer",
+    "superconduct*",
+    "qubit*",
+    "molecular dynamics",
+    "interatomic potential",
+)
+
+# Without a core-topic hit these make a paper off-topic outright.
+DEFAULT_HARD_NEGATIVE_KEYWORDS = (
+    "photocatalys*",
+    "photoanode",
+    "photoelectrochemical",
+    "water splitting",
+    "hydrogen evolution",
+    "oxygen evolution",
+    "solar cell",
+    "photovoltaic*",
+    "battery",
+    "batteries",
+    "electrolyte*",
+    "lithium-ion",
+    "supercapacitor*",
+    "memristor*",
+    "synaptic",
+    "CMOS",
+    "qubit*",
+    "transmon",
+)
+
+CORE_WEIGHT = 4
+SECONDARY_WEIGHT = 2
+POLAR_WEIGHT = 1
+MAGNETO_POLAR_BONUS = 4
+NEGATIVE_WEIGHT = 3
+NEGATIVE_CAP = 12
+EXPERIMENT_CAP = 6
+THEORY_PENALTY = 4
 
 DEFAULT_THEORY_MARKERS = (
     "first-principles",
@@ -94,6 +229,11 @@ DEFAULT_THEORY_MARKERS = (
     "monte carlo",
     "tensor network",
     "DMRG",
+    "exact diagonalization",
+    "mean-field",
+    "theory of",
+    "theoretical",
+    "we predict",
 )
 
 DEFAULT_EXPERIMENT_MARKERS = (
@@ -132,6 +272,13 @@ DEFAULT_EXPERIMENT_MARKERS = (
     "PPMS",
     "SQUID",
     "sintered",
+    "floating zone",
+    "Bridgman",
+    "NMR",
+    "ESR",
+    "pyroelectric current",
+    "thermal conductivity",
+    "x-ray diffraction",
 )
 
 # Flexible patterns for the markers the digest cares about. A config keyword
@@ -200,7 +347,92 @@ _KEYWORD_ALIASES = {
     "heat capacity": r"heat\s+capacit(?:y|ies)",
     "polarization": r"polari[sz]ations?",
     "dielectric": r"dielectrics?",
+    "spin-driven polarization": r"spin[\s-](?:driven|induced)\s+(?:electric\s+|ferroelectric\s+)?polari[sz]ation",
+    "polar magnet": r"polar\s+(?:anti|ferri)?magnets?",
+    "shastry-sutherland": r"shastry[\s\-–—]+sutherland",
+    "magnetization plateau": r"magneti[sz]ation\s+plateaus?",
+    "magnetic order": r"magnetic(?:ally)?\s+order(?:s|ed|ing)?",
+    "long-range order": r"long[\s-]range\s+(?:magnetic\s+)?order",
+    "spin chain": r"spin[\s-]chains?",
+    "spin ladder": r"spin[\s-]ladders?",
+    "chiral magnet": r"chiral\s+(?:anti|heli)?magne\w*",
+    "noncoplanar": r"non-?coplanar",
+    "spin gap": r"spin[\s-]gaps?",
+    "spin glass": r"spin[\s-]glass\w*",
+    "spin-flop": r"spin[\s-]flop",
+    "spin reorientation": r"spin[\s-]reorientation",
+    "magnetostructural": r"magneto-?structural",
+    "magnetoelastic": r"magneto-?elastic",
+    "neel": r"n[eé]el",
+    "crystal field": r"crystal(?:line)?[\s-](?:electric\s+)?fields?",
+    "local moment": r"local(?:ized)?\s+(?:magnetic\s+)?moments?",
+    "rare-earth": r"rare[\s-]earths?",
+    "spin-orbit coupled": r"spin[\s-]orbit[\s-](?:coupled|entangled)|j_?\{?eff\}?\s*=\s*1/2",
+    "magnetic susceptibility": r"magnetic\s+susceptibilit(?:y|ies)",
+    "spin wave": r"spin[\s-]waves?",
+    "neutron scattering": r"neutron\s+scattering",
+    "neutron diffraction": r"neutron\s+(?:powder\s+)?diffraction",
+    "electron spin resonance": r"electron\s+(?:spin|paramagnetic)\s+resonance",
+    "van der waals magnet": r"van\s+der\s+waals\s+(?:anti|ferro)?magnet\w*",
+    "haldane": r"haldane",
+    "pyroelectric": r"pyroelectrics?",
+    "relaxor": r"relaxors?",
+    "electric polarization": r"electric(?:al)?\s+polari[sz]ations?",
+    "thin film": r"thin[\s-]films?",
+    "heterostructure": r"heterostructures?",
+    "pulsed laser deposition": r"pulsed[\s-]laser[\s-]deposit\w*",
+    "pld": r"\bPLD\b",
+    "mbe": r"\bMBE\b",
+    "molecular beam": r"molecular[\s-]beam",
+    "device": r"devices?",
+    "transistor": r"transistors?",
+    "spin-orbit torque": r"spin[\s-]orbit\s+torques?",
+    "terahertz emission": r"terahertz\s+emi\w*",
+    "photoanode": r"photoanodes?",
+    "photoelectrochemical": r"photo-?electrochemi\w*",
+    "water splitting": r"water[\s-]splitting",
+    "hydrogen evolution": r"hydrogen[\s-]evolution",
+    "oxygen evolution": r"oxygen[\s-]evolution",
+    "solar cell": r"solar[\s-]cells?",
+    "battery": r"batter(?:y|ies)",
+    "batteries": r"batter(?:y|ies)",
+    "cathode": r"cathodes?",
+    "anode": r"\banodes?\b",
+    "lithium-ion": r"lithium[\s-]ion|\bLi[\s-]ion",
+    "synaptic": r"synap\w*",
+    "cmos": r"\bCMOS\b",
+    "machine learning": r"machine[\s-]learn\w*",
+    "neural network": r"neural[\s-]networks?",
+    "deep learning": r"deep[\s-]learning",
+    "dataset": r"datasets?",
+    "moire": r"moir[eé]",
+    "monolayer": r"monolayers?",
+    "molecular dynamics": r"molecular[\s-]dynamics",
+    "interatomic potential": r"interatomic\s+potentials?",
+    "transmon": r"transmons?",
+    "exact diagonalization": r"exact[\s-]diagonali[sz]ation",
+    "mean-field": r"mean[\s-]field",
+    "theory of": r"\btheory\s+of\b",
+    "theoretical": r"\btheoretical(?:ly)?\b",
+    "we predict": r"\bwe\s+predict\b",
+    "floating zone": r"floating[\s-]zone",
+    "bridgman": r"bridgman",
+    "nmr": r"\bNMR\b",
+    "esr": r"\bESR\b",
+    "pyroelectric current": r"pyroelectric\s+currents?",
+    "thermal conductivity": r"thermal\s+conductivit(?:y|ies)",
+    "x-ray diffraction": r"x-?ray\s+diffraction|\bXRD\b",
 }
+
+# Experiment markers that show real crystals were grown; they add a growth bonus.
+_GROWTH_EVIDENCE_RE = re.compile(
+    r"single[\s-]crystals?|crystal\s+growth|(?:were|was)\s+grown|grown\s+(?:by|from|using)|"
+    r"flux[\s-](?:growth|grown|method)|chemical\s+vapou?r\s+transport|\bCVT\b|"
+    r"floating[\s-]zone|bridgman|high[\s-]pressure\s+(?:synthesis|synthesized|growth)|"
+    r"solid[\s-]state\s+(?:reaction|synthesis)|polycrystal\w*",
+    re.IGNORECASE,
+)
+GROWTH_BONUS = 2
 
 _TOXIC_RE = re.compile(
     r"\b(?:thallium|mercury|beryllium|osmium tetroxide|arsine|phosphine)\b|\bBeO\b|铊|汞|铍",
@@ -261,6 +493,10 @@ _ARXIV_OLD_RE = re.compile(
 class Settings:
     categories: list[str] = field(default_factory=lambda: list(DEFAULT_CATEGORIES))
     keywords: list[str] = field(default_factory=lambda: list(DEFAULT_KEYWORDS))
+    secondary_keywords: list[str] = field(default_factory=lambda: list(DEFAULT_SECONDARY_KEYWORDS))
+    polar_keywords: list[str] = field(default_factory=lambda: list(DEFAULT_POLAR_KEYWORDS))
+    negative_keywords: list[str] = field(default_factory=lambda: list(DEFAULT_NEGATIVE_KEYWORDS))
+    hard_negative_keywords: list[str] = field(default_factory=lambda: list(DEFAULT_HARD_NEGATIVE_KEYWORDS))
     theory_markers: list[str] = field(default_factory=lambda: list(DEFAULT_THEORY_MARKERS))
     experiment_markers: list[str] = field(default_factory=lambda: list(DEFAULT_EXPERIMENT_MARKERS))
     max_lookback_days: int = DEFAULT_LOOKBACK_DAYS
@@ -299,30 +535,91 @@ class Settings:
 
 
 class Prefilter:
+    """Cheap title+abstract prefilter and ranking score.
+
+    ``status`` returns ``"keep"``, ``"theory"`` or ``"offtopic"``. A paper is a
+    candidate when it hits a core or secondary magnetism keyword, or a polar
+    keyword. Hard negatives (photocatalysis, batteries, devices ...) without a
+    core-topic hit are off-topic. ``score`` ranks the candidates: core topics
+    and measured crystals up, applied/thin-film/theory work down.
+    """
+
     def __init__(
         self,
         keywords: Iterable[str],
         theory_markers: Iterable[str],
         experiment_markers: Iterable[str],
+        secondary: Iterable[str] = (),
+        polar: Iterable[str] = (),
+        negative: Iterable[str] = (),
+        hard_negative: Iterable[str] = (),
     ) -> None:
-        self.topics = [_compile_keyword(item) for item in keywords if str(item).strip()]
-        self.theory = [_compile_keyword(item) for item in theory_markers if str(item).strip()]
-        self.experiment = [
-            _compile_keyword(item) for item in experiment_markers if str(item).strip()
-        ]
+        self.topics = _compile_all(keywords)
+        self.secondary = _compile_all(secondary)
+        self.polar = _compile_all(polar)
+        self.negative = _compile_all(negative)
+        self.hard_negative = _compile_all(hard_negative)
+        self.theory = _compile_all(theory_markers)
+        self.experiment = _compile_all(experiment_markers)
+
+    @staticmethod
+    def _any(patterns: list[re.Pattern[str]], text: str) -> bool:
+        return any(pattern.search(text) for pattern in patterns)
 
     def status(self, title: str, summary: str = "") -> str:
         text = f"{title or ''}\n{summary or ''}"
-        if not any(pattern.search(text) for pattern in self.topics):
+        core = self._any(self.topics, text)
+        magnetic = core or self._any(self.secondary, text)
+        polar = self._any(self.polar, text)
+        if not (magnetic or polar):
             return "offtopic"
-        theory = any(pattern.search(text) for pattern in self.theory)
-        experiment = any(pattern.search(text) for pattern in self.experiment)
+        if not core and self._any(self.hard_negative, text):
+            return "offtopic"
+        theory = self._any(self.theory, text)
+        experiment = self._any(self.experiment, text)
         if theory and not experiment:
             return "theory"
         return "keep"
 
     def keep(self, title: str, summary: str = "") -> bool:
         return self.status(title, summary) == "keep"
+
+    @staticmethod
+    def _weighted(patterns: list[re.Pattern[str]], title: str, summary: str, weight: int) -> int:
+        total = 0
+        for pattern in patterns:
+            if pattern.search(title):
+                total += 2 * weight
+            elif pattern.search(summary):
+                total += weight
+        return total
+
+    def score(self, title: str, summary: str = "") -> int:
+        title = title or ""
+        summary = summary or ""
+        text = f"{title}\n{summary}"
+        core = self._weighted(self.topics, title, summary, CORE_WEIGHT)
+        secondary = self._weighted(self.secondary, title, summary, SECONDARY_WEIGHT)
+        polar = self._weighted(self.polar, title, summary, POLAR_WEIGHT)
+        total = core + secondary + polar
+        if polar and (core or secondary):
+            total += MAGNETO_POLAR_BONUS
+        experiment_hits = sum(1 for pattern in self.experiment if pattern.search(text))
+        total += min(EXPERIMENT_CAP, experiment_hits)
+        grown = bool(_GROWTH_EVIDENCE_RE.search(text))
+        if grown:
+            total += GROWTH_BONUS
+        negatives = sum(1 for pattern in self.negative if pattern.search(text))
+        total -= min(NEGATIVE_CAP, NEGATIVE_WEIGHT * negatives)
+        # Theory / DFT wording without any sign of real samples ranks lower.
+        # (Words like "magnetization" or "dielectric" alone are not samples.)
+        if not grown and self._any(self.theory, text):
+            total -= THEORY_PENALTY
+        return total
+
+
+def _compile_all(items: Iterable[str]) -> list[re.Pattern[str]]:
+    return [_compile_keyword(item) for item in items if str(item).strip()]
 
 
 def _compile_keyword(keyword: str) -> re.Pattern[str]:
@@ -342,7 +639,27 @@ def _compile_keyword(keyword: str) -> re.Pattern[str]:
 
 
 def default_prefilter() -> Prefilter:
-    return Prefilter(DEFAULT_KEYWORDS, DEFAULT_THEORY_MARKERS, DEFAULT_EXPERIMENT_MARKERS)
+    return Prefilter(
+        DEFAULT_KEYWORDS,
+        DEFAULT_THEORY_MARKERS,
+        DEFAULT_EXPERIMENT_MARKERS,
+        secondary=DEFAULT_SECONDARY_KEYWORDS,
+        polar=DEFAULT_POLAR_KEYWORDS,
+        negative=DEFAULT_NEGATIVE_KEYWORDS,
+        hard_negative=DEFAULT_HARD_NEGATIVE_KEYWORDS,
+    )
+
+
+def settings_prefilter(settings: "Settings") -> Prefilter:
+    return Prefilter(
+        settings.keywords,
+        settings.theory_markers,
+        settings.experiment_markers,
+        secondary=settings.secondary_keywords,
+        polar=settings.polar_keywords,
+        negative=settings.negative_keywords,
+        hard_negative=settings.hard_negative_keywords,
+    )
 
 
 def passes_prefilter(title: str, summary: str = "", settings: Optional[Settings] = None) -> bool:
@@ -356,17 +673,10 @@ def prefilter_status(title: str, summary: str = "", settings: Optional[Settings]
 
 
 def keyword_match_score(title: str, summary: str = "", settings: Optional[Settings] = None) -> int:
-    """How many topic keywords hit. Title matches count more than abstract-only hits."""
+    """Prefilter ranking score: weighted topic hits (title counts double),
+    measurement / crystal-growth evidence up, applied and theory work down."""
     prefilter = settings.prefilter if settings is not None and settings.prefilter else default_prefilter()
-    title_text = title or ""
-    summary_text = summary or ""
-    title_hits = sum(1 for pattern in prefilter.topics if pattern.search(title_text))
-    summary_only = sum(
-        1
-        for pattern in prefilter.topics
-        if pattern.search(summary_text) and not pattern.search(title_text)
-    )
-    return title_hits * 3 + summary_only
+    return prefilter.score(title or "", summary or "")
 
 
 def _as_list(value: Any) -> list[str]:
@@ -375,6 +685,13 @@ def _as_list(value: Any) -> list[str]:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
     return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _list_or_default(data: Mapping[str, Any], key: str, default: Iterable[str]) -> list[str]:
+    """A key missing from config.yaml uses the default; an explicit empty list disables it."""
+    if key not in data:
+        return list(default)
+    return _as_list(data.get(key))
 
 
 def _env_str(environ: Mapping[str, str], key: str) -> Optional[str]:
@@ -452,6 +769,10 @@ def load_settings(
         ] or categories
 
     keywords = _as_list(data.get("keywords")) or list(DEFAULT_KEYWORDS)
+    secondary = _list_or_default(data, "secondary_keywords", DEFAULT_SECONDARY_KEYWORDS)
+    polar = _list_or_default(data, "polar_keywords", DEFAULT_POLAR_KEYWORDS)
+    negative = _list_or_default(data, "negative_keywords", DEFAULT_NEGATIVE_KEYWORDS)
+    hard_negative = _list_or_default(data, "hard_negative_keywords", DEFAULT_HARD_NEGATIVE_KEYWORDS)
     theory = _as_list(data.get("theory_markers")) or list(DEFAULT_THEORY_MARKERS)
     experiment = _as_list(data.get("experiment_markers")) or list(DEFAULT_EXPERIMENT_MARKERS)
     models = data.get("models") if isinstance(data.get("models"), dict) else {}
@@ -508,6 +829,10 @@ def load_settings(
     settings = Settings(
         categories=categories,
         keywords=keywords,
+        secondary_keywords=secondary,
+        polar_keywords=polar,
+        negative_keywords=negative,
+        hard_negative_keywords=hard_negative,
         theory_markers=theory,
         experiment_markers=experiment,
         max_lookback_days=lookback,
@@ -526,7 +851,7 @@ def load_settings(
         legacy_state_path=legacy_state,
         config_path=path if path.is_file() else None,
     )
-    settings.prefilter = Prefilter(settings.keywords, settings.theory_markers, settings.experiment_markers)
+    settings.prefilter = settings_prefilter(settings)
     return settings
 
 
@@ -627,31 +952,22 @@ def compute_window(
     max_lookback_days: int,
     overlap: timedelta = WINDOW_OVERLAP,
 ) -> tuple[datetime, datetime]:
-    """Return [start, end) covering the time since the last success.
+    """Return the [start, end) submission window to query.
 
-    The start is never older than ``max_lookback_days`` (weekends / missed runs)
-    and reaches back a short overlap so clock skew does not drop a paper.
-    Dedup keeps the overlap from being sent twice.
+    The arXiv API only indexes a paper after it is announced, which is about
+    1-3.5 days after submission (longer over weekends). An incremental window
+    that starts at the last successful run therefore misses most papers: when
+    they become visible their submission time is already behind the window.
+    So the window is always the full rolling lookback; ``sent_ids`` and the
+    screening cache keep papers from being sent or scored twice.
+    ``last_success`` and ``overlap`` are accepted for compatibility.
     """
+    del last_success, overlap
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
     else:
         now = now.astimezone(timezone.utc)
-    lookback_start = now - timedelta(days=max(1, int(max_lookback_days)))
-    if last_success is None:
-        return lookback_start, now
-    if last_success.tzinfo is None:
-        last_success = last_success.replace(tzinfo=timezone.utc)
-    else:
-        last_success = last_success.astimezone(timezone.utc)
-    if last_success > now:
-        return lookback_start, now
-    start = last_success - overlap
-    if start < lookback_start:
-        start = lookback_start
-    if start > now:
-        start = lookback_start
-    return start, now
+    return now - timedelta(days=max(1, int(max_lookback_days))), now
 
 
 def build_arxiv_search_query(
@@ -728,6 +1044,7 @@ def empty_state() -> dict[str, Any]:
         "sent_ids": [],
         "sent_titles": [],
         "pending": [],
+        "screened": {},
         "last_successful_run": None,
     }
 
@@ -759,6 +1076,7 @@ def _normalize_state(data: Mapping[str, Any]) -> dict[str, Any]:
         }
         if record["arxiv_id"] or record["doi"]:
             pending.append(record)
+    screened = _normalize_screen_cache(data.get("screened"))
     last_run = data.get("last_successful_run")
     if last_run:
         parsed = parse_iso(str(last_run))
@@ -769,8 +1087,72 @@ def _normalize_state(data: Mapping[str, Any]) -> dict[str, Any]:
         "sent_ids": sorted(sent),
         "sent_titles": titles[-MAX_STORED_TITLES:],
         "pending": pending,
+        "screened": screened,
         "last_successful_run": last_run,
     }
+
+
+_CACHE_FIELDS = (
+    "experimental", "sample_form", "growth_method", "measurements", "theta_CW",
+    "T_order", "frustration_index", "room_temperature_relevant",
+    "meets_measured_data", "meets_physics_highlight", "meets_feasible",
+    "thin_film_only_mbe", "off_topic", "topic", "score", "highlight_zh",
+)
+
+
+def _normalize_screen_cache(raw: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(raw, Mapping):
+        return {}
+    cache: dict[str, tuple[str, dict[str, Any]]] = {}
+    for key, entry in raw.items():
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("result"), Mapping):
+            continue
+        normalized_keys = normalize_any_id(str(key))
+        if not normalized_keys:
+            continue
+        at = parse_iso(str(entry.get("at") or "")) if entry.get("at") else None
+        if at is None:
+            continue
+        result = {name: entry["result"].get(name) for name in _CACHE_FIELDS if name in entry["result"]}
+        for norm in normalized_keys:
+            cache[norm] = (at.isoformat(), result)
+    newest = sorted(cache.items(), key=lambda item: item[1][0], reverse=True)[:MAX_SCREEN_CACHE]
+    return {key: {"at": at, "result": result} for key, (at, result) in sorted(newest)}
+
+
+def cached_screening(paper: Mapping[str, Any], state: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+    """A previous LLM screening result for this paper, if any."""
+    cache = state.get("screened") or {}
+    for key in sorted(dedup_keys(paper)):
+        entry = cache.get(key)
+        if entry and isinstance(entry.get("result"), Mapping):
+            return dict(entry["result"])
+    return None
+
+
+def remember_screened(
+    state: dict[str, Any],
+    papers: Iterable[Mapping[str, Any]],
+    now: datetime,
+    keep_days: int = SCREEN_CACHE_DAYS,
+) -> dict[str, Any]:
+    """Cache successful LLM screening results; prune entries older than keep_days."""
+    cache = dict(state.get("screened") or {})
+    stamp = now.astimezone(timezone.utc).isoformat()
+    for paper in papers:
+        if paper.get("screen_error") or not _llm_scored(paper):
+            continue
+        result = {name: paper.get(name) for name in _CACHE_FIELDS if name in paper}
+        for key in dedup_keys(paper):
+            cache[key] = {"at": stamp, "result": result}
+    cutoff = now.astimezone(timezone.utc) - timedelta(days=max(1, keep_days))
+    pruned = {}
+    for key, entry in cache.items():
+        at = parse_iso(str(entry.get("at") or "")) if isinstance(entry, Mapping) else None
+        if at is not None and at >= cutoff:
+            pruned[key] = entry
+    state["screened"] = pruned
+    return state
 
 
 def load_state(path: os.PathLike[str] | str, legacy_path: Optional[os.PathLike[str] | str] = None) -> dict[str, Any]:
@@ -1029,6 +1411,8 @@ def normalize_screening_object(raw: Mapping[str, Any]) -> Optional[dict[str, Any
         "meets_physics_highlight": _parse_bool(raw.get("meets_physics_highlight")),
         "meets_feasible": _parse_bool(raw.get("meets_feasible")),
         "thin_film_only_mbe": bool(_parse_bool(raw.get("thin_film_only_mbe"))),
+        "off_topic": bool(_parse_bool(raw.get("off_topic"))),
+        "topic": _optional_text(raw.get("topic")),
         "score": score,
         "highlight_zh": highlight,
         "summary_zh": summary,
@@ -1211,12 +1595,14 @@ def _derive_feasible(screening: Mapping[str, Any], paper: Mapping[str, Any]) -> 
 
 
 def decide_screening(paper: Mapping[str, Any], screening: Mapping[str, Any]) -> dict[str, Any]:
-    """Pass experimental papers with real samples and relevant physics.
+    """Pass experimental papers with real samples, on-topic physics and a
+    score of at least PASS_SCORE.
 
-    Growth feasibility is recorded but does not block a pass: an unclear
-    recipe still belongs on the card. Pure theory and thin-film-only MBE
-    stay hard-dropped. A score of at least PASS_SCORE counts as relevant
-    when the model withheld the physics flag.
+    The score carries topic relevance (the prompt puts frustrated magnets,
+    QSL, multiferroics and magnetoelectrics at the top), so a paper the model
+    marks off-topic or scores below PASS_SCORE becomes a runner-up, never a
+    pass. Growth feasibility is recorded but does not block a pass. Pure
+    theory and thin-film-only MBE stay hard-dropped.
     """
     sample_form = screening.get("sample_form") or "none"
     growth = screening.get("growth_method") or "unknown"
@@ -1238,7 +1624,8 @@ def decide_screening(paper: Mapping[str, Any], screening: Mapping[str, Any]) -> 
         "single crystal",
         "polycrystal",
     }
-    relevant = bool(meets_physics) or bool(screening.get("room_temperature_relevant")) or score >= PASS_SCORE
+    off_topic = bool(screening.get("off_topic"))
+    relevant = score >= PASS_SCORE and not off_topic
     passes = bool(
         screening.get("experimental")
         and not hard_drop
@@ -1260,6 +1647,8 @@ def decide_screening(paper: Mapping[str, Any], screening: Mapping[str, Any]) -> 
         "meets_physics_highlight": meets_physics,
         "meets_feasible": meets_feasible,
         "thin_film_only_mbe": bool(screening.get("thin_film_only_mbe")) or is_thin_film_only_mbe(sample_form, growth),
+        "off_topic": off_topic,
+        "topic": screening.get("topic"),
         "score": float(screening.get("score") or 0),
         "highlight_zh": screening.get("highlight_zh") or "",
         "summary_zh": screening.get("summary_zh") or "",
@@ -1316,24 +1705,25 @@ def select_papers(
 ) -> tuple[list[dict[str, Any]], bool]:
     """Pick the day's card.
 
-    Papers that pass are kept, capped at ``max_papers``. If fewer than
-    ``min_papers`` pass, top up toward that floor, and allow one extra up to
-    ``topup_limit`` when the next score is tied or close. Top-up order is
-    LLM runner-ups by score, then keyword-prefiltered papers that were not
-    scored. Hard-dropped theory and MBE films are never used. Top-ups are
-    labeled 备选. Returns ``(selected, send_empty_note)``.
+    Papers that pass are kept best score first, capped at ``max_papers``.
+    If fewer than ``min_papers`` pass, top up toward that floor, and allow
+    one extra up to ``topup_limit`` when the next score is tied or close.
+    Top-up order: on-topic LLM runner-ups by score, then keyword-prefiltered
+    papers that were not scored (by prefilter score), and only then runner-ups
+    the model marked off-topic. Hard-dropped papers (pure theory / DFT, MBE
+    film only) are never used. So the card reaches the floor whenever that
+    many usable unsent candidates exist. Top-ups are labeled 备选.
+    Returns ``(selected, send_empty_note)``.
     """
     max_papers, min_papers = _clamp_limits(max_papers, min_papers)
     topup_cap = min(max_papers, max(min_papers, int(topup_limit)))
-    eligible = [
-        dict(paper)
-        for paper in screened
-        if not paper.get("hard_drop") and not paper.get("screen_error")
-    ]
+    scored = [dict(paper) for paper in screened if not paper.get("screen_error")]
+    eligible = [paper for paper in scored if not paper.get("hard_drop")]
     qualifying = [paper for paper in eligible if paper.get("passes")]
-    runner_ups = [paper for paper in eligible if not paper.get("passes")]
-    qualifying.sort(key=_rank_key)
-    runner_ups.sort(key=_rank_key)
+    runner_ups = [paper for paper in eligible if not paper.get("passes") and not paper.get("off_topic")]
+    off_topic = [paper for paper in eligible if not paper.get("passes") and paper.get("off_topic")]
+    for group in (qualifying, runner_ups, off_topic):
+        group.sort(key=_rank_key)
     keyword_pool = [dict(paper) for paper in unscored if not paper.get("hard_drop")]
     keyword_pool.sort(key=lambda paper: (
         -int(paper.get("keyword_score") or 0),
@@ -1350,7 +1740,7 @@ def select_papers(
         return selected, False
 
     pool: list[dict[str, Any]] = []
-    for paper in [*runner_ups, *keyword_pool]:
+    for paper in [*runner_ups, *keyword_pool, *off_topic]:
         identity = _identity(paper)
         if identity in seen:
             continue
@@ -1359,7 +1749,12 @@ def select_papers(
 
     while pool and len(selected) < min_papers:
         selected.append(_mark_selected(pool.pop(0), backup=True))
-    while pool and len(selected) < topup_cap and _scores_close(selected[-1], pool[0]):
+    while (
+        pool
+        and len(selected) < topup_cap
+        and not pool[0].get("off_topic")
+        and _scores_close(selected[-1], pool[0])
+    ):
         selected.append(_mark_selected(pool.pop(0), backup=True))
     if not selected:
         return [], True

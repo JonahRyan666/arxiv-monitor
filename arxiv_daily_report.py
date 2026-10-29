@@ -74,11 +74,20 @@ class ArxivQueryError(RuntimeError):
     pass
 
 
-SCREEN_INSTRUCTIONS = """你是凝聚态实验文献筛选助手。读者是一名实验凝聚态博士生：用助熔剂（flux）、化学气相传输（CVT）、固相反应、高温高压生长单晶或多晶，并用 MPMS 和 PPMS 测量。关注量子自旋液体、磁电耦合、多铁和阻挫磁体，优先室温附近的相变。只要实验论文。
+SCREEN_INSTRUCTIONS = """你是凝聚态实验文献筛选助手。读者是一名实验凝聚态博士生：用助熔剂（flux）、化学气相传输（CVT）、固相反应、高温高压生长单晶或多晶，并用 MPMS 和 PPMS 测量。核心方向：量子自旋液体、阻挫磁体（kagome、三角、pyrochlore、蜂窝/Kitaev、Shastry-Sutherland、自旋冰等）、多铁与磁电耦合（自旋驱动电极化、极性磁体、磁介电）。只根据标题和摘要判断，按下面的评分标准严格打分，宁可给低分也不要抬分。
+
+评分标准（score，0–10）：
+- 9–10：核心方向的实验论文，有真实块体单晶或多晶，并报道了磁化率/磁化、比热、中子、μSR、NMR/ESR、介电或电极化等测量数据
+- 7–8：核心方向的实验论文但测量较少；或相邻的量子磁体（自旋链、自旋梯子、二聚体、稀土/过渡金属氧化物和卤化物中的阻挫或低维磁性、螺旋/手性磁体、斯格明子宿主材料的块体晶体）且有块体样品和测量
+- 5–6：其它块体磁性材料的实验工作（普通反铁磁、磁结构相变、磁弹耦合等），有样品和测量，但与核心方向关系一般
+- 3–4：实验但偏离读者方向：没有磁性的纯铁电或介电工作、超导、只做输运或光谱的非阻挫体系、以薄膜生长或器件为主的材料研究
+- 0–2：离题或纯理论：光催化、光电极、电池、太阳能电池、忆阻器/突触器件、自旋电子学器件、机器学习/数据集、纯 DFT/第一性原理、纯模型计算或数值模拟（没有自己测量的样品）
 
 对下面每一篇论文输出一个 JSON 数组，元素顺序与输入一致。不要输出 Markdown 或解释。每篇必须包含这些字段：
 - index: 整数，从 0 开始
 - id: 原样抄写输入里的 id
+- topic: "core"、"adjacent"、"peripheral"、"off_topic" 之一，分别对应上面的 9–10/7–8、5–6、3–4、0–2 档
+- off_topic: 布尔。光催化、电池、器件、太阳能电池、机器学习、与磁性和极化都无关的工作为 true
 - experimental: 布尔。只有确实制备了样品并给出测量数据时才为 true。纯理论、第一性原理、DFT、自建模型、蒙特卡洛、张量网络、DMRG、数值求解且没有测量样品时为 false
 - sample_form: "single crystal"、"polycrystal"、"film"、"none" 之一
 - growth_method: 简短写法，如 "flux"、"CVT"、"solid-state"、"high-pressure"、"floating-zone"、"MBE"、"PLD" 或 "unknown"。摘要写了中文方法时可直接用中文（助熔剂法、化学气相传输、固相反应、高温高压、分子束外延）
@@ -88,10 +97,10 @@ SCREEN_INSTRUCTIONS = """你是凝聚态实验文献筛选助手。读者是一�
 - frustration_index: 数值 f=|θCW|/T_N，无法计算则 null
 - room_temperature_relevant: 布尔。有序或铁电转变是否靠近室温（约 250–400 K）
 - meets_measured_data: 布尔。有真实样品，且报道了 χ(T)、比热、中子、μSR、介电或电极化等测量
-- meets_physics_highlight: 布尔。摘要和读者的方向相关即可为 true：量子自旋液体、阻挫、kagome、pyrochlore、三角或蜂窝格子、Kitaev、多铁、磁电、电极化，或给出了磁化率、比热、中子、μSR、介电等结果。不要求 f>10
-- meets_feasible: 布尔。生长方法属于 flux、CVT、固相或高温高压（浮区也可接受），前驱体不是剧毒（铊、汞、铍等），测量落在 MPMS/PPMS 常规范围。摘要没写生长方法时填 false，不要因此把 experimental 判成 false，也不要因此把 score 压到 4 分以下
+- meets_physics_highlight: 布尔。属于核心方向或相邻量子磁体时为 true
+- meets_feasible: 布尔。生长方法属于 flux、CVT、固相或高温高压（浮区也可接受），前驱体不是剧毒（铊、汞、铍等），测量落在 MPMS/PPMS 常规范围。摘要没写生长方法时填 false，但不要因此降低 score
 - thin_film_only_mbe: 布尔。仅薄膜且用分子束外延（MBE）制备时为 true
-- score: 0 到 10 的数值。有真实样品、测量和相关物理的实验论文至少给 4 分；室温附近的相变和强阻挫给 8–10。纯理论必须低于 3 分
+- score: 按上面的评分标准给 0 到 10 的数值。同一档内，强阻挫（f 大）、无长程序、磁电耦合有直接测量、靠近室温的相变给更高分
 - highlight_zh: 一句中性的物理亮点或筛选理由，只谈样品、测量和物理结论。不要写“博士生”“读者”“建议阅读”这类话，也不要评价这篇适不适合某人
 - summary_zh: 可省略。完整摘要另作翻译，这里不要概括摘要
 
@@ -170,7 +179,7 @@ def fetch_arxiv_papers(
     start: datetime,
     end: datetime,
     page_size: int = 100,
-    max_papers: int = 400,
+    max_papers: int = 800,
 ) -> list[dict[str, Any]]:
     query = build_arxiv_search_query(categories, start, end)
     papers: list[dict[str, Any]] = []
@@ -428,18 +437,21 @@ def _max_tokens(count: int) -> int:
     return min(4000, 650 * max(1, count) + 200)
 
 
+SCREEN_ABSTRACT_CHARS = 1500
+
+
 def screening_messages(papers: list[dict[str, Any]], repair: bool = False) -> list[dict[str, str]]:
     payload = []
     for index, paper in enumerate(papers):
         abstract = (paper.get("summary") or "").strip()
-        if len(abstract) > 1600:
-            abstract = abstract[:1600].rstrip() + "…"
+        if len(abstract) > SCREEN_ABSTRACT_CHARS:
+            abstract = abstract[:SCREEN_ABSTRACT_CHARS].rstrip() + "…"
+        # Abstract-only screening: title + abstract, no authors or full text.
         payload.append({
             "index": index,
             "id": paper.get("arxiv_id") or paper.get("doi") or paper.get("id"),
             "source": paper.get("source"),
             "title": paper.get("title"),
-            "authors": paper.get("authors") or [],
             "abstract": abstract,
         })
     user = SCREEN_INSTRUCTIONS + "\n\n论文列表：\n" + json.dumps(payload, ensure_ascii=False)
@@ -707,11 +719,7 @@ def maybe_post_results(digest: dict[str, Any]) -> None:
 
 def _ensure_prefilter(settings: Settings) -> Settings:
     if settings.prefilter is None:
-        settings.prefilter = digest_lib.Prefilter(
-            settings.keywords,
-            settings.theory_markers,
-            settings.experiment_markers,
-        )
+        settings.prefilter = digest_lib.settings_prefilter(settings)
     return settings
 
 
@@ -811,8 +819,26 @@ def main(settings: Optional[Settings] = None) -> int:
             (paper.get("title") or "").lower(),
         ),
     )
-    to_screen = ranked[: max(1, settings.screen_pool)] if ranked else []
-    held_back = ranked[len(to_screen):]
+
+    # Papers already scored on an earlier day reuse that result: the rolling
+    # lookback window brings them back, but they should neither cost another
+    # LLM call nor crowd new papers out of the screening pool.
+    cached_ok: list[dict[str, Any]] = []
+    uncached: list[dict[str, Any]] = []
+    for paper in ranked:
+        cached = digest_lib.cached_screening(paper, state)
+        if cached is None:
+            uncached.append(paper)
+            continue
+        decided = decide_screening(paper, cached)
+        decided["llm_scored"] = True
+        decided["from_cache"] = True
+        cached_ok.append(decided)
+    to_screen = uncached[: max(1, settings.screen_pool)] if uncached else []
+    held_back = uncached[len(to_screen):]
+    print(f"送模型筛选 {len(to_screen)} 篇（复用往日评分 {len(cached_ok)} 篇，未评分备用 {len(held_back)} 篇）")
+    for paper in to_screen[:12]:
+        print(f"    · [{paper.get('keyword_score')}] {(paper.get('title') or '')[:80]}")
 
     if to_screen and not (os.getenv("SILICONFLOW_API_KEY") or "").strip():
         print("❌ 未设置 SILICONFLOW_API_KEY，无法筛选")
@@ -842,12 +868,12 @@ def main(settings: Optional[Settings] = None) -> int:
         paper["passes"] = False
         paper["hard_drop"] = False
     keyword_pool = [*held_back, *failed]
-    if to_screen and not ok and not keyword_pool:
+    if to_screen and not ok and not keyword_pool and not cached_ok:
         print("❌ 候选论文筛选全部失败，本次不推送、不推进窗口")
         return 1
 
     selected, empty_note = select_papers(
-        ok,
+        [*ok, *cached_ok],
         settings.max_papers_per_day,
         settings.min_papers_per_day,
         unscored=keyword_pool,
@@ -868,6 +894,8 @@ def main(settings: Optional[Settings] = None) -> int:
         "fetched_arxiv": len(arxiv_papers),
         "fetched_jpsj": len(jpsj_papers),
         "prefiltered": len(prefiltered),
+        "llm_screened": len(ok),
+        "cached": len(cached_ok),
         "screen_failed": len(failed) + len(missing_pending),
         "qualifying": qualifying,
         "backup": backups,
@@ -913,6 +941,7 @@ def main(settings: Optional[Settings] = None) -> int:
         dropped_keys,
     )[:40]
     remember_sent(state, selected)
+    digest_lib.remember_screened(state, ok, now)
     state["last_successful_run"] = now.isoformat()
     save_state(settings.state_path, state)
     print(f"已更新去重状态，累计 {len(state['sent_ids'])} 篇")

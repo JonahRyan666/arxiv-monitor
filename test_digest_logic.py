@@ -259,6 +259,79 @@ class PrefilterTests(unittest.TestCase):
         self.assertGreater(title_hit, abstract_hit)
         self.assertGreaterEqual(title_hit, 3)
 
+    def test_photocatalysis_ferroelectric_is_off_topic(self):
+        self.assertEqual(prefilter_status(
+            "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled "
+            "Charge Separation in TiO2 Photoanode",
+            "Ferroelectric SrTiO3 shells grown by PLD improve photoelectrochemical water splitting.",
+        ), "offtopic")
+        self.assertEqual(prefilter_status(
+            "Lead-free KCuCl3 memristors for synaptic devices",
+            "The ferroelectric-like switching was measured.",
+        ), "offtopic")
+
+    def test_hard_negative_with_a_core_topic_is_kept_but_ranked_low(self):
+        title = "Kagome photocatalyst for hydrogen evolution"
+        summary = "A kagome framework is used as a photocatalyst for hydrogen evolution in water splitting."
+        self.assertEqual(prefilter_status(title, summary), "keep")
+        core = digest_lib.keyword_match_score(
+            "Spin liquid ground state in a kagome antiferromagnet",
+            "Single crystals were grown by the flux method; susceptibility and specific heat show no order.",
+        )
+        self.assertGreater(core, digest_lib.keyword_match_score(title, summary) + 10)
+
+    def test_pure_ferroelectric_ranks_below_frustrated_magnet(self):
+        ferro = digest_lib.keyword_match_score(
+            "Relaxor ferroelectric behavior in Ag-substituted K5Nb9O25 single crystals",
+            "Single crystals were grown and the dielectric permittivity shows relaxor behavior.",
+        )
+        magnet = digest_lib.keyword_match_score(
+            "Stripe antiferromagnetic order and spin dynamics in the Shastry-Sutherland Ising compound Er2Be2GeO7",
+            "Neutron scattering, magnetization and specific heat on single crystals reveal frustrated order.",
+        )
+        optics = digest_lib.keyword_match_score(
+            "Holonomy analysis of optical-polarization temperature trajectories in stress-induced ferroelectric SrTiO3",
+            "We analyse optical polarization trajectories of a thin film device.",
+        )
+        self.assertGreater(magnet, ferro)
+        self.assertGreater(ferro, optics)
+        self.assertEqual(prefilter_status(
+            "Relaxor ferroelectric behavior in Ag-substituted K5Nb9O25 single crystals",
+            "Single crystals were grown and the dielectric permittivity shows relaxor behavior.",
+        ), "keep")
+
+    def test_magnetoelectric_bonus_beats_plain_ferroelectric(self):
+        multiferroic = digest_lib.keyword_match_score(
+            "Spin-driven ferroelectric polarization in a polar magnet",
+            "Pyroelectric current and magnetization of single crystals show magnetoelectric coupling.",
+        )
+        plain = digest_lib.keyword_match_score(
+            "Ferroelectric domain switching in a perovskite oxide",
+            "Pyroelectric current of single crystals was measured.",
+        )
+        self.assertGreater(multiferroic, plain + 15)
+
+    def test_broader_magnetism_is_a_candidate(self):
+        for title in (
+            "Quasiparticle interactions in the S=1/2 Heisenberg antiferromagnetic chain CuPzN",
+            "Anisotropic magneto-elastic coupling in the quasi-2D Ising magnet Li2FeSiO4",
+            "Spin-flop transition in a rare-earth orthoferrite",
+            "Field-induced magnon condensation in a spin dimer compound",
+        ):
+            self.assertEqual(prefilter_status(title, "Single crystals; magnetization measured."), "keep", title)
+
+    def test_applied_thin_film_work_ranks_below_bulk_crystals(self):
+        film = digest_lib.keyword_match_score(
+            "Spin-orbit torque switching in antiferromagnetic thin film heterostructure devices",
+            "Epitaxial films were sputtered for spintronic devices.",
+        )
+        bulk = digest_lib.keyword_match_score(
+            "Antiferromagnetic order in flux-grown single crystals",
+            "Magnetic susceptibility and neutron diffraction were measured.",
+        )
+        self.assertGreater(bulk, film)
+        self.assertLess(film, 0)
+
     def test_config_keywords_replace_defaults(self):
         settings = digest_lib.Settings(keywords=["skyrmion"], theory_markers=[], experiment_markers=[])
         settings.prefilter = Prefilter(settings.keywords, [], [])
@@ -314,15 +387,33 @@ class JsonAndDecisionTests(unittest.TestCase):
         self.assertFalse(decided["hard_drop"])
         self.assertFalse(decided["meets_feasible"])
 
-    def test_modest_score_passes_when_samples_exist(self):
-        decided = decide_screening(paper(), screening(
+    def test_pass_needs_score_of_at_least_six(self):
+        modest = decide_screening(paper(), screening(
             meets_measured_data=False,
-            meets_physics_highlight=False,
+            meets_physics_highlight=True,
             meets_feasible=False,
             measurements=["specific heat"],
             score=4,
         ))
-        self.assertTrue(decided["passes"])
+        self.assertFalse(modest["passes"])
+        self.assertFalse(modest["hard_drop"])
+        good = decide_screening(paper(), screening(
+            meets_measured_data=False,
+            meets_physics_highlight=False,
+            meets_feasible=False,
+            measurements=["specific heat"],
+            score=6,
+        ))
+        self.assertTrue(good["passes"])
+
+    def test_off_topic_flag_blocks_a_pass_even_with_a_high_score(self):
+        decided = decide_screening(
+            paper(title="Ferroelectric SrTiO3 shells in a TiO2 photoanode"),
+            screening(off_topic=True, topic="off_topic", score=7),
+        )
+        self.assertFalse(decided["passes"])
+        self.assertTrue(decided["off_topic"])
+        self.assertFalse(decided["hard_drop"])
 
     def test_low_score_without_physics_stays_runner_up(self):
         decided = decide_screening(paper(), screening(
@@ -420,13 +511,18 @@ class SelectionAndCardTests(unittest.TestCase):
         self.assertEqual([item["score"] for item in selected], [9, 5, 3])
         self.assertTrue(all(item["backup"] for item in selected))
 
-        nothing, note = select_papers(
-            [self._decided(10, hard_drop=True, passes=False)],
+        nothing, note = select_papers([], max_papers=10, min_papers=3)
+        self.assertTrue(note)
+        self.assertEqual(nothing, [])
+
+    def test_hard_dropped_papers_are_never_used(self):
+        only_theory, note = select_papers(
+            [self._decided(2, hard_drop=True, passes=False, title="Theory only")],
             max_papers=10,
             min_papers=3,
         )
         self.assertTrue(note)
-        self.assertEqual(nothing, [])
+        self.assertEqual(only_theory, [])
 
     def test_tops_up_to_five_and_allows_a_close_sixth(self):
         passing = [self._decided(9, passes=True, title="Pass A"), self._decided(8, passes=True, title="Pass B")]
@@ -455,8 +551,8 @@ class SelectionAndCardTests(unittest.TestCase):
 
     def test_keyword_candidates_fill_after_runner_ups(self):
         runners = [self._decided(6, passes=False, title="Scored runner")]
-        weaker = paper(title="Weaker pyrochlore", arxiv_id="2401.00002", id="2401.00002", link="https://arxiv.org/abs/2401.00002")
-        stronger = paper(title="Stronger kagome spin liquid", arxiv_id="2401.00003", id="2401.00003", link="https://arxiv.org/abs/2401.00003")
+        weaker = paper(title="Weaker pyrochlore", arxiv_id="2402.00002", id="2402.00002", link="https://arxiv.org/abs/2402.00002")
+        stronger = paper(title="Stronger kagome spin liquid", arxiv_id="2402.00003", id="2402.00003", link="https://arxiv.org/abs/2402.00003")
         weaker.update({"keyword_score": 1, "keyword_only": True, "llm_scored": False, "passes": False, "hard_drop": False})
         stronger.update({"keyword_score": 6, "keyword_only": True, "llm_scored": False, "passes": False, "hard_drop": False})
         theory = self._decided(10, passes=False, hard_drop=True, title="Pure theory")
@@ -472,6 +568,47 @@ class SelectionAndCardTests(unittest.TestCase):
         self.assertEqual(selected[2]["title"], "Weaker pyrochlore")
         self.assertTrue(all(item["backup"] for item in selected))
         self.assertNotIn("Pure theory", [item["title"] for item in selected])
+        self.assertEqual(len(selected), 3)
+
+    def test_min_five_top_up_order_and_labels(self):
+        passing = [
+            self._decided(9, passes=True, title="Pass kagome"),
+            self._decided(7, passes=True, title="Pass multiferroic"),
+        ]
+        runner = self._decided(5, passes=False, title="Runner antiferromagnet")
+        off = self._decided(8, passes=False, title="Off-topic photoanode", off_topic=True)
+        theory_hi = self._decided(2.5, passes=False, hard_drop=True, title="Theory B")
+        theory_lo = self._decided(1, passes=False, hard_drop=True, title="Theory C")
+        keyword = paper(title="Unscored spin chain", arxiv_id="2402.00009", id="2402.00009",
+                        link="https://arxiv.org/abs/2402.00009")
+        keyword.update({"keyword_score": 9, "keyword_only": True, "llm_scored": False,
+                        "passes": False, "hard_drop": False})
+        selected, empty = select_papers(
+            [theory_lo, off, runner, *passing, theory_hi],
+            max_papers=10,
+            min_papers=5,
+            unscored=[keyword],
+        )
+        self.assertFalse(empty)
+        self.assertEqual(
+            [item["title"] for item in selected],
+            ["Pass kagome", "Pass multiferroic", "Runner antiferromagnet",
+             "Unscored spin chain", "Off-topic photoanode"],
+        )
+        self.assertEqual([item["backup"] for item in selected], [False, False, True, True, True])
+        self.assertEqual(selected[2]["backup_label"], BACKUP_LABEL)
+
+    def test_close_sixth_never_pulls_in_off_topic_or_theory(self):
+        items = [self._decided(score, passes=False, title=f"R{score}") for score in (9, 8, 7, 6, 5)]
+        items.append(self._decided(5, passes=False, title="Off", off_topic=True))
+        items.append(self._decided(5, passes=False, hard_drop=True, title="Theory"))
+        selected, _empty = select_papers(items, max_papers=10, min_papers=5)
+        self.assertEqual([item["title"] for item in selected], ["R9", "R8", "R7", "R6", "R5"])
+
+    def test_passes_rank_best_score_first(self):
+        items = [self._decided(score, passes=True, title=f"P{score}") for score in (6, 9.5, 7, 8)]
+        selected, _empty = select_papers(items, max_papers=10, min_papers=1)
+        self.assertEqual([item["score"] for item in selected], [9.5, 8, 7, 6])
 
     def test_many_passes_stay_under_the_normal_cap(self):
         items = [self._decided(score, passes=True, title=f"P{score}") for score in range(1, 9)]
@@ -619,11 +756,13 @@ class SelectionAndCardTests(unittest.TestCase):
 
 
 class WindowAndConfigTests(unittest.TestCase):
-    def test_window_is_capped_at_lookback(self):
+    def test_window_is_always_the_full_lookback(self):
+        # arXiv only indexes a paper after its announcement (1-3.5 days after
+        # submission), so the window must not start at the last success.
         now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
         start, end = compute_window(now, now - timedelta(days=1), 3)
         self.assertEqual(end, now)
-        self.assertEqual(start, now - timedelta(days=1) - digest_lib.WINDOW_OVERLAP)
+        self.assertEqual(start, now - timedelta(days=3))
 
         start, _end = compute_window(now, now - timedelta(days=10), 3)
         self.assertEqual(start, now - timedelta(days=3))
@@ -678,7 +817,10 @@ arxiv_monitor:
         self.assertEqual(settings.categories, ["cond-mat.str-el", "cond-mat.mtrl-sci"])
         self.assertEqual(settings.max_papers_per_day, 10)
         self.assertEqual(settings.min_papers_per_day, 5)
-        self.assertEqual(settings.screen_pool, 16)
+        self.assertEqual(settings.screen_pool, 36)
+        self.assertEqual(settings.max_lookback_days, 6)
+        self.assertIn("antiferromagnet*", settings.secondary_keywords)
+        self.assertIn("photoanode", settings.hard_negative_keywords)
         self.assertEqual(settings.screen_model, "Qwen/Qwen3.6-27B")
         self.assertEqual(settings.fallback_model, "Qwen/Qwen3.5-9B")
         self.assertEqual(settings.legacy_model, "tencent/Hunyuan-MT-7B")
@@ -717,6 +859,35 @@ arxiv_monitor:
         self.assertNotIn("MAX_PAPERS_PER_RUN", text)
         self.assertNotIn("iopscience", text.lower())
         self.assertNotIn("open.feishu.cn", text)
+
+
+class ScreenCacheTests(unittest.TestCase):
+    def test_cache_round_trips_through_state_and_prunes(self):
+        now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
+        decided = decide_screening(paper(arxiv_id="2401.12345v2", id="2401.12345v2"), screening(score=7))
+        decided["llm_scored"] = True
+        failed = paper(arxiv_id="2401.99999", id="2401.99999")
+        failed.update({"screen_error": True})
+        state = digest_lib.empty_state()
+        digest_lib.remember_screened(state, [decided, failed], now)
+        self.assertIn("2401.12345", state["screened"])
+        self.assertNotIn("2401.99999", state["screened"])
+        folder = Path(tempfile.mkdtemp())
+        save_state(folder / "s.json", state)
+        loaded = load_state(folder / "s.json")
+        cached = digest_lib.cached_screening(paper(arxiv_id="2401.12345v3", id="2401.12345v3"), loaded)
+        self.assertEqual(cached["score"], 7)
+        again = decide_screening(paper(), cached)
+        self.assertTrue(again["passes"])
+        digest_lib.remember_screened(loaded, [], now + timedelta(days=digest_lib.SCREEN_CACHE_DAYS + 1))
+        self.assertEqual(loaded["screened"], {})
+
+    def test_old_state_without_cache_loads(self):
+        folder = Path(tempfile.mkdtemp())
+        (folder / "s.json").write_text(json.dumps({"sent_ids": ["2401.00001"]}), encoding="utf-8")
+        state = load_state(folder / "s.json")
+        self.assertEqual(state["screened"], {})
+        self.assertIsNone(digest_lib.cached_screening(paper(), state))
 
 
 class ArxivFetchTests(unittest.TestCase):
@@ -905,6 +1076,77 @@ class ScreeningAndRunTests(unittest.TestCase):
         self.assertIn(EMPTY_NOTE, second_card)
         self.assertNotIn("2401.12345", second_card)
         self.assertEqual(screen.call_count, 1)
+
+    @patch.object(monitor, "translate_selected")
+    @patch.object(monitor, "enrich_missing_abstracts")
+    @patch.object(monitor, "screen_papers")
+    @patch.object(monitor, "fetch_jpsj_crossref_papers", return_value=[])
+    @patch.object(monitor, "fetch_arxiv_papers")
+    @patch.object(monitor.requests, "post")
+    def test_run_fills_five_reuses_cache_and_skips_sent_before_cap(
+        self, post, fetch_arxiv, _jpsj, screen, _enrich, translate,
+    ):
+        translate.side_effect = self._fill_translation
+        post.return_value = _feishu_ok()
+        topics = ["kagome", "pyrochlore", "honeycomb", "triangular-lattice", "Kitaev", "multiferroic", "spin-ice"]
+        candidates = []
+        for index, topic in enumerate(topics):
+            candidates.append(paper(
+                id=f"2410.0000{index}",
+                arxiv_id=f"2410.0000{index}",
+                link=f"https://arxiv.org/abs/2410.0000{index}",
+                title=f"Frustrated {topic} antiferromagnet number {index}",
+                summary="Single crystals were grown by flux; susceptibility and specific heat were measured.",
+            ))
+        offtopic = paper(
+            id="2410.00099", arxiv_id="2410.00099", link="https://arxiv.org/abs/2410.00099",
+            title="Ferroelectric shells for a TiO2 photoanode",
+            summary="Photoelectrochemical water splitting with ferroelectric polarization.",
+        )
+        fetch_arxiv.return_value = [*candidates, offtopic]
+        scores = {0: 9, 1: 3, 2: 2, 3: 4, 4: 1, 5: 3.5, 6: 2.5}
+
+        def fake_screen(papers, _settings):
+            out = []
+            for item in papers:
+                index = int(item["arxiv_id"][-1])
+                out.append(decide_screening(item, screening(id=item["arxiv_id"], score=scores[index])))
+            return out
+
+        screen.side_effect = fake_screen
+        settings = self._settings(dry_run=False)
+        settings.screen_pool = 4
+        state = digest_lib.empty_state()
+        digest_lib.remember_sent(state, [candidates[6]])
+        save_state(settings.state_path, state)
+
+        self.assertEqual(monitor.main(settings), 0)
+        screened_titles = [item["title"] for item in screen.call_args.args[0]]
+        self.assertEqual(len(screened_titles), 4)
+        self.assertNotIn(candidates[6]["title"], screened_titles)
+        self.assertNotIn(offtopic["title"], screened_titles)
+        digest = json.loads(settings.digest_path.read_text(encoding="utf-8"))
+        chosen = digest["papers"]
+        # Floor of five; one close-scored extra is allowed (tie on keyword score).
+        self.assertIn(len(chosen), (5, 6))
+        self.assertEqual(chosen[0]["score"], 9)
+        self.assertFalse(chosen[0]["backup"])
+        self.assertTrue(all(item["backup"] for item in chosen[1:]))
+        self.assertNotIn("photoanode", json.dumps(chosen))
+
+        # Next day: the same window comes back. Already-scored papers reuse the
+        # cache, sent ones stay out, and only never-scored papers hit the model.
+        state = load_state(settings.state_path)
+        self.assertTrue(state["screened"])
+        screen.reset_mock()
+        screen.side_effect = fake_screen
+        self.assertEqual(monitor.main(settings), 0)
+        for call in screen.call_args_list:
+            for item in call.args[0]:
+                self.assertIsNone(digest_lib.cached_screening(item, state))
+        second = json.loads(settings.digest_path.read_text(encoding="utf-8"))["papers"]
+        first_ids = {item["arxiv_id"] for item in chosen}
+        self.assertFalse(first_ids & {item["arxiv_id"] for item in second})
 
     @patch.object(monitor.requests, "post")
     def test_translation_uses_hunyuan_and_skips_papers_not_passed_in(self, post):
