@@ -13,6 +13,9 @@ from digest_lib import (
     BACKUP_LABEL,
     DISCUSSION_FOOTER,
     EMPTY_NOTE,
+    build_feishu_cards,
+    parse_labeled_translation,
+    parse_translation_payload,
     Prefilter,
     build_arxiv_search_query,
     build_feishu_card,
@@ -486,10 +489,19 @@ class SelectionAndCardTests(unittest.TestCase):
         self.assertEqual(selected[0]["title"], "Room T")
 
     def test_card_lists_required_fields_and_backup_label(self):
-        chosen = self._decided(8, title="Kagome [spin] liquid", arxiv_id="2401.12345")
+        chosen = self._decided(8, title="Kagome [spin] liquid", arxiv_id="2401.12345v1")
+        chosen["title_zh"] = "笼目自旋液体"
+        chosen["abstract_zh"] = (
+            "本文报道笼目晶格上的量子自旋液体。样品为单晶，测量了磁化率与比热。"
+            "公式 $\\mathbf{C}=(1,1,1)$ 给出了磁场方向。"
+        )
+        chosen["summary_zh"] = "这位博士生应该把这篇当作首选。"
+        chosen["theta_CW"] = "-120 K"
         backup = self._decided(6.5, passes=False, title="Backup crystal", growth_method="CVT")
         backup["backup"] = True
         backup["backup_label"] = BACKUP_LABEL
+        backup["title_zh"] = "备选晶体"
+        backup["abstract_zh"] = "这是一篇备选论文的完整中文摘要，包含比热和介电测量的具体描述，供群里决定要不要细读。"
         now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
         card = build_feishu_card(
             [chosen, backup],
@@ -499,16 +511,18 @@ class SelectionAndCardTests(unittest.TestCase):
             max_authors=3,
         )
         blob = json.dumps(card, ensure_ascii=False)
-        self.assertIn("https://arxiv.org/abs/2401.12345", blob)
+        self.assertIn("https://arxiv.org/abs/2401.12345v1", blob)
         self.assertIn("Kagome ［spin］ liquid", blob)
         self.assertIn("Ann Author, Bo Bates, Cai Chen et al.", blob)
-        self.assertIn("评分 8/10", blob)
-        self.assertIn("生长：flux", blob)
-        self.assertIn("这是一句中文亮点", blob)
-        self.assertIn("样品由助熔剂法生长", blob)
-        self.assertIn(BACKUP_LABEL, blob)
-        self.assertIn("评分 6.5/10", blob)
-        self.assertIn("生长：CVT", blob)
+        self.assertIn("**达标** · 评分 8/10", blob)
+        self.assertIn("【中文题名】笼目自旋液体", blob)
+        self.assertIn("【摘要翻译】本文报道笼目晶格上的量子自旋液体。", blob)
+        self.assertIn("mathbf{C}=(1,1,1)", blob)
+        self.assertIn("【亮点/筛选理由】这是一句中文亮点", blob)
+        self.assertIn("单晶 · flux · θCW=-120 K · arXiv", blob)
+        self.assertNotIn("博士生", blob)
+        self.assertIn("**备选** · 评分 6.5/10", blob)
+        self.assertIn("CVT", blob)
         self.assertIn("**#1**", blob)
         self.assertIn("**#2**", blob)
         self.assertLess(blob.index("**#1**"), blob.index("**#2**"))
@@ -537,9 +551,51 @@ class SelectionAndCardTests(unittest.TestCase):
         blob = json.dumps(card, ensure_ascii=False)
         self.assertIn("**#1**", blob)
         self.assertIn(BACKUP_LABEL, blob)
-        self.assertIn("未调用模型，仅凭关键词入选", blob)
+        self.assertIn("【亮点/筛选理由】关键词匹配入选，供讨论是否细读。", blob)
+        self.assertIn("【摘要翻译】", blob)
         self.assertNotIn("评分", blob)
         self.assertIn(DISCUSSION_FOOTER, blob)
+
+    def test_long_digest_splits_cards_and_keeps_numbering(self):
+        papers = []
+        for index in range(3):
+            item = self._decided(8, title=f"Long paper {index}", arxiv_id=f"2401.5555{index}")
+            item["title_zh"] = f"长摘要题名{index}"
+            item["abstract_zh"] = "测" * 900
+            item["highlight_zh"] = "比热在低温下呈线性。"
+            papers.append(item)
+        now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
+        cards = build_feishu_cards(
+            papers,
+            generated_at=now,
+            window_start=now,
+            window_end=now,
+            max_bytes=1800,
+            papers_per_card=5,
+        )
+        self.assertGreaterEqual(len(cards), 3)
+        blobs = [json.dumps(card, ensure_ascii=False) for card in cards]
+        self.assertNotIn(DISCUSSION_FOOTER, blobs[0])
+        self.assertIn(DISCUSSION_FOOTER, blobs[-1])
+        self.assertTrue(all(DISCUSSION_FOOTER not in blob for blob in blobs[1:-1]))
+        joined = "\n".join(blobs)
+        self.assertLess(joined.index("**#1**"), joined.index("**#2**"))
+        self.assertLess(joined.index("**#2**"), joined.index("**#3**"))
+        self.assertIn("分", blobs[0])
+
+    def test_labeled_translation_keeps_formula(self):
+        formula = r"$\mathbf{C}=(1,1,1)$"
+        text = (
+            "【中文题名】磁性焦绿石体系中的三维量子霍尔绝缘体\n"
+            f"【摘要翻译】磁场沿 {formula} 方向时，单晶输运出现量子霍尔平台，比热也给出相应异常。"
+        )
+        parsed = parse_labeled_translation(text)
+        self.assertEqual(parsed["title_zh"], "磁性焦绿石体系中的三维量子霍尔绝缘体")
+        self.assertIn(formula, parsed["abstract_zh"])
+        batch = parse_translation_payload(json.dumps([
+            {"index": 0, "title_zh": parsed["title_zh"], "abstract_zh": parsed["abstract_zh"]},
+        ]), 1)
+        self.assertIn(formula, batch[0]["abstract_zh"])
 
     def test_empty_card_uses_the_required_note(self):
         now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
@@ -669,7 +725,8 @@ class ArxivFetchTests(unittest.TestCase):
         self.assertEqual(len(papers), 1)
         self.assertEqual(papers[0]["arxiv_id"], "2401.12345")
         self.assertEqual(papers[0]["doi"], "10.1103/physrevb.100.123456")
-        self.assertEqual(papers[0]["link"], "https://arxiv.org/abs/2401.12345")
+        self.assertEqual(papers[0]["link"], "https://arxiv.org/abs/2401.12345v2")
+        self.assertEqual(papers[0]["arxiv_version"], "v2")
         self.assertEqual(papers[0]["authors"], ["A. Author", "B. Author"])
         self.assertNotIn("  ", papers[0]["title"])
 
@@ -775,12 +832,23 @@ class ScreeningAndRunTests(unittest.TestCase):
             monitor.screen_papers([self._candidate()], settings)
         self.assertEqual(post.call_count, 1)
 
+    def _fill_translation(self, papers, _settings):
+        formula = r"$\mathbf{C}=(1,1,1)$"
+        for paper in papers:
+            paper["title_zh"] = "磁性焦绿石体系中的三维量子霍尔绝缘体"
+            paper["abstract_zh"] = (
+                "本文在磁性焦绿石体系中报道了三维量子霍尔绝缘体。"
+                f"磁场方向为 {formula} 。单晶样品的输运和比热测量给出了量子霍尔平台。"
+            )
+
+    @patch.object(monitor, "translate_selected")
     @patch.object(monitor, "enrich_missing_abstracts")
     @patch.object(monitor, "screen_papers")
     @patch.object(monitor, "fetch_jpsj_crossref_papers", return_value=[])
     @patch.object(monitor, "fetch_arxiv_papers")
     @patch.object(monitor.requests, "post")
-    def test_dry_run_prints_card_and_skips_post(self, post, fetch_arxiv, _jpsj, screen, _enrich):
+    def test_dry_run_prints_card_and_skips_post(self, post, fetch_arxiv, _jpsj, screen, _enrich, translate):
+        translate.side_effect = self._fill_translation
         fetch_arxiv.return_value = [self._candidate()]
         screen.side_effect = lambda papers, _settings: [
             self._decided_from(papers[0])
@@ -792,25 +860,29 @@ class ScreeningAndRunTests(unittest.TestCase):
         self.assertEqual(code, 0)
         printed = buffer.getvalue()
         self.assertIn("FEISHU CARD", printed)
-        self.assertIn("https://arxiv.org/abs/2401.12345", printed)
-        self.assertNotIn("2401.12345v2", printed)
+        self.assertIn("https://arxiv.org/abs/2401.12345v2", printed)
+        self.assertIn("【中文题名】", printed)
+        self.assertIn("【摘要翻译】", printed)
         post.assert_not_called()
         self.assertFalse(settings.state_path.exists())
         digest = json.loads(settings.digest_path.read_text(encoding="utf-8"))
         self.assertEqual(digest["papers"][0]["arxiv_id"], "2401.12345")
-        self.assertEqual(digest["papers"][0]["link"], "https://arxiv.org/abs/2401.12345")
+        self.assertEqual(digest["papers"][0]["link"], "https://arxiv.org/abs/2401.12345v2")
+        self.assertIn("$\\mathbf{C}=(1,1,1)$", digest["papers"][0]["abstract_zh"])
         self.assertTrue(digest["dry_run"])
 
     def _decided_from(self, source):
         decided = decide_screening(source, screening(id="2401.12345"))
         return decided
 
+    @patch.object(monitor, "translate_selected")
     @patch.object(monitor, "enrich_missing_abstracts")
     @patch.object(monitor, "screen_papers")
     @patch.object(monitor, "fetch_jpsj_crossref_papers", return_value=[])
     @patch.object(monitor, "fetch_arxiv_papers")
     @patch.object(monitor.requests, "post")
-    def test_send_records_normalized_id_and_does_not_resend(self, post, fetch_arxiv, _jpsj, screen, _enrich):
+    def test_send_records_normalized_id_and_does_not_resend(self, post, fetch_arxiv, _jpsj, screen, _enrich, translate):
+        translate.side_effect = self._fill_translation
         candidate = self._candidate()
         fetch_arxiv.return_value = [candidate]
         screen.side_effect = lambda papers, _settings: [self._decided_from(papers[0])] if papers else []
@@ -822,8 +894,8 @@ class ScreeningAndRunTests(unittest.TestCase):
         self.assertNotIn("2401.12345v2", state["sent_ids"])
         self.assertIsNotNone(state["last_successful_run"])
         first_card = json.dumps(post.call_args.kwargs["json"]["card"], ensure_ascii=False)
-        self.assertIn("https://arxiv.org/abs/2401.12345", first_card)
-        self.assertNotIn("2401.12345v2", first_card)
+        self.assertIn("https://arxiv.org/abs/2401.12345v2", first_card)
+        self.assertIn("【摘要翻译】", first_card)
         self.assertIn("助熔剂", first_card)
         self.assertIn(post.call_args.kwargs["json"]["sign"], [post.call_args.kwargs["json"]["sign"]])
 
@@ -833,6 +905,36 @@ class ScreeningAndRunTests(unittest.TestCase):
         self.assertIn(EMPTY_NOTE, second_card)
         self.assertNotIn("2401.12345", second_card)
         self.assertEqual(screen.call_count, 1)
+
+    @patch.object(monitor.requests, "post")
+    def test_translation_uses_hunyuan_and_skips_papers_not_passed_in(self, post):
+        settings = self._settings()
+        settings.legacy_model = "tencent/Hunyuan-MT-7B"
+        settings.fallback_model = "Qwen/Qwen3.5-9B"
+        formula = r"$\mathbf{C}=(1,1,1)$"
+        abstract_zh = (
+            "磁性焦绿石体系呈现三维量子霍尔效应。"
+            f"磁场方向取 {formula} 。单晶输运测量给出量子霍尔平台。"
+        )
+        payload = json.dumps([{
+            "index": 0,
+            "title_zh": "磁性焦绿石体系中的三维量子霍尔绝缘体",
+            "abstract_zh": abstract_zh,
+        }], ensure_ascii=False)
+        post.return_value = Mock(status_code=200, json=lambda: {"choices": [{"message": {"content": payload}}]})
+        selected = [paper(
+            title="3D quantum Hall insulator",
+            summary=f"We report a pyrochlore magnet. Field along {formula}. Specific heat was measured.",
+        )]
+        rejected = paper(title="Rejected theory paper", summary="We propose a model and use DMRG only.")
+        monitor.translate_selected(selected, settings)
+        self.assertEqual(post.call_count, 1)
+        body = post.call_args.kwargs["json"]
+        self.assertEqual(body["model"], "tencent/Hunyuan-MT-7B")
+        self.assertNotIn("enable_thinking", body)
+        self.assertNotIn("Rejected theory paper", body["messages"][-1]["content"])
+        self.assertIn(formula, selected[0]["abstract_zh"])
+        self.assertNotIn("title_zh", rejected)
 
     @patch.object(monitor.requests, "post")
     def test_results_webhook_is_skipped_when_unset_and_signs_when_set(self, post):
