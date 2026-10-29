@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import digest_lib
 from digest_lib import (
     BACKUP_LABEL,
+    DISCUSSION_FOOTER,
     EMPTY_NOTE,
     Prefilter,
     build_arxiv_search_query,
@@ -240,6 +241,20 @@ class PrefilterTests(unittest.TestCase):
             "The ferroelectric polarization is field-tunable.",
         ))
         self.assertTrue(passes_prefilter("Spin correlations on the triangular-lattice", ""))
+        self.assertTrue(passes_prefilter(
+            "Chiral spin-liquid on the kagome lattice",
+            "Single crystals were grown and susceptibility was measured.",
+        ))
+        self.assertEqual(prefilter_status(
+            "First-principles study of a spin-liquid",
+            "We perform DFT calculations of the band structure.",
+        ), "theory")
+
+    def test_keyword_score_weights_the_title(self):
+        title_hit = digest_lib.keyword_match_score("Kagome spin liquid", "")
+        abstract_hit = digest_lib.keyword_match_score("A new oxide", "We study a kagome spin liquid.")
+        self.assertGreater(title_hit, abstract_hit)
+        self.assertGreaterEqual(title_hit, 3)
 
     def test_config_keywords_replace_defaults(self):
         settings = digest_lib.Settings(keywords=["skyrmion"], theory_markers=[], experiment_markers=[])
@@ -290,8 +305,29 @@ class JsonAndDecisionTests(unittest.TestCase):
         flagged = decide_screening(paper(), screening(thin_film_only_mbe=True, sample_form="single crystal"))
         self.assertTrue(flagged["hard_drop"])
 
-    def test_partial_match_stays_eligible_as_backup(self):
+    def test_unclear_growth_still_passes(self):
         decided = decide_screening(paper(), screening(meets_feasible=False, score=6))
+        self.assertTrue(decided["passes"])
+        self.assertFalse(decided["hard_drop"])
+        self.assertFalse(decided["meets_feasible"])
+
+    def test_modest_score_passes_when_samples_exist(self):
+        decided = decide_screening(paper(), screening(
+            meets_measured_data=False,
+            meets_physics_highlight=False,
+            meets_feasible=False,
+            measurements=["specific heat"],
+            score=4,
+        ))
+        self.assertTrue(decided["passes"])
+
+    def test_low_score_without_physics_stays_runner_up(self):
+        decided = decide_screening(paper(), screening(
+            meets_physics_highlight=False,
+            meets_feasible=False,
+            room_temperature_relevant=False,
+            score=2,
+        ))
         self.assertFalse(decided["passes"])
         self.assertFalse(decided["hard_drop"])
 
@@ -314,7 +350,15 @@ class JsonAndDecisionTests(unittest.TestCase):
 
 class SelectionAndCardTests(unittest.TestCase):
     def _decided(self, score, passes=True, hard_drop=False, **extra):
-        item = paper(title=extra.pop("title", f"Paper {score}"))
+        title = extra.pop("title", f"Paper {score}")
+        self._seq = getattr(self, "_seq", 0) + 1
+        arxiv_id = f"2401.{self._seq:05d}"
+        item = paper(
+            title=title,
+            id=arxiv_id,
+            arxiv_id=arxiv_id,
+            link=f"https://arxiv.org/abs/{arxiv_id}",
+        )
         item.update({
             "score": score,
             "passes": passes,
@@ -349,7 +393,10 @@ class SelectionAndCardTests(unittest.TestCase):
         ]
         selected, empty = select_papers(items, max_papers=10, min_papers=3)
         self.assertFalse(empty)
-        self.assertEqual([item["title"] for item in selected], ["Good A", "Good B", "Backup high"])
+        self.assertEqual(
+            [item["title"] for item in selected],
+            ["Good A", "Good B", "Backup high", "Backup low"],
+        )
         self.assertEqual(selected[-1]["backup_label"], BACKUP_LABEL)
         self.assertTrue(selected[-1]["backup"])
         self.assertNotIn("Pure theory", [item["title"] for item in selected])
@@ -377,6 +424,58 @@ class SelectionAndCardTests(unittest.TestCase):
         )
         self.assertTrue(note)
         self.assertEqual(nothing, [])
+
+    def test_tops_up_to_five_and_allows_a_close_sixth(self):
+        passing = [self._decided(9, passes=True, title="Pass A"), self._decided(8, passes=True, title="Pass B")]
+        runners = [
+            self._decided(7, passes=False, title="Run 7"),
+            self._decided(6.2, passes=False, title="Run 6.2"),
+            self._decided(5.4, passes=False, title="Run 5.4"),
+            self._decided(5.0, passes=False, title="Run 5"),
+            self._decided(2, passes=False, title="Run 2"),
+        ]
+        selected, empty = select_papers(passing + runners, max_papers=10, min_papers=5)
+        self.assertFalse(empty)
+        self.assertEqual(
+            [item["title"] for item in selected],
+            ["Pass A", "Pass B", "Run 7", "Run 6.2", "Run 5.4", "Run 5"],
+        )
+        self.assertTrue(all(item["backup"] for item in selected[2:]))
+        self.assertTrue(all(not item["backup"] for item in selected[:2]))
+        self.assertNotIn("Run 2", [item["title"] for item in selected])
+
+    def test_does_not_add_sixth_when_the_gap_is_large(self):
+        items = [self._decided(score, passes=False, title=f"R{score}") for score in (9, 8, 7, 6, 5, 2)]
+        selected, empty = select_papers(items, max_papers=10, min_papers=5)
+        self.assertFalse(empty)
+        self.assertEqual([item["score"] for item in selected], [9, 8, 7, 6, 5])
+
+    def test_keyword_candidates_fill_after_runner_ups(self):
+        runners = [self._decided(6, passes=False, title="Scored runner")]
+        weaker = paper(title="Weaker pyrochlore", arxiv_id="2401.00002", id="2401.00002", link="https://arxiv.org/abs/2401.00002")
+        stronger = paper(title="Stronger kagome spin liquid", arxiv_id="2401.00003", id="2401.00003", link="https://arxiv.org/abs/2401.00003")
+        weaker.update({"keyword_score": 1, "keyword_only": True, "llm_scored": False, "passes": False, "hard_drop": False})
+        stronger.update({"keyword_score": 6, "keyword_only": True, "llm_scored": False, "passes": False, "hard_drop": False})
+        theory = self._decided(10, passes=False, hard_drop=True, title="Pure theory")
+        selected, empty = select_papers(
+            [runners[0], theory],
+            max_papers=10,
+            min_papers=5,
+            unscored=[weaker, stronger],
+        )
+        self.assertFalse(empty)
+        self.assertEqual(selected[0]["title"], "Scored runner")
+        self.assertEqual(selected[1]["title"], "Stronger kagome spin liquid")
+        self.assertEqual(selected[2]["title"], "Weaker pyrochlore")
+        self.assertTrue(all(item["backup"] for item in selected))
+        self.assertNotIn("Pure theory", [item["title"] for item in selected])
+
+    def test_many_passes_stay_under_the_normal_cap(self):
+        items = [self._decided(score, passes=True, title=f"P{score}") for score in range(1, 9)]
+        selected, empty = select_papers(items, max_papers=10, min_papers=5)
+        self.assertFalse(empty)
+        self.assertEqual(len(selected), 8)
+        self.assertTrue(all(not item["backup"] for item in selected))
 
     def test_room_temperature_breaks_score_ties(self):
         items = [
@@ -410,7 +509,37 @@ class SelectionAndCardTests(unittest.TestCase):
         self.assertIn(BACKUP_LABEL, blob)
         self.assertIn("评分 6.5/10", blob)
         self.assertIn("生长：CVT", blob)
+        self.assertIn("**#1**", blob)
+        self.assertIn("**#2**", blob)
+        self.assertLess(blob.index("**#1**"), blob.index("**#2**"))
+        self.assertIn(DISCUSSION_FOOTER, blob)
+        self.assertEqual(blob.count("**#1**"), 1)
+        self.assertEqual(blob.count("**#2**"), 1)
         self.assertEqual(card["header"]["template"], "blue")
+
+    def test_unscored_backup_omits_score_and_keeps_its_number(self):
+        unscored = paper(title="Keyword only pyrochlore", arxiv_id="2401.22222")
+        unscored.update({
+            "backup": True,
+            "backup_label": BACKUP_LABEL,
+            "keyword_only": True,
+            "llm_scored": False,
+            "score": None,
+            "keyword_score": 3,
+        })
+        now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
+        card = build_feishu_card(
+            [unscored],
+            generated_at=now,
+            window_start=now,
+            window_end=now,
+        )
+        blob = json.dumps(card, ensure_ascii=False)
+        self.assertIn("**#1**", blob)
+        self.assertIn(BACKUP_LABEL, blob)
+        self.assertIn("未调用模型，仅凭关键词入选", blob)
+        self.assertNotIn("评分", blob)
+        self.assertIn(DISCUSSION_FOOTER, blob)
 
     def test_empty_card_uses_the_required_note(self):
         now = datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc)
@@ -418,6 +547,7 @@ class SelectionAndCardTests(unittest.TestCase):
         blob = json.dumps(card, ensure_ascii=False)
         self.assertIn(EMPTY_NOTE, blob)
         self.assertIn("今日没有符合筛选条件的实验论文。", blob)
+        self.assertNotIn("请大家在群里回复讨论", blob)
         payload = build_feishu_payload(card, secret="test-secret", timestamp="1700000000")
         self.assertEqual(payload["msg_type"], "interactive")
         self.assertEqual(payload["timestamp"], "1700000000")
@@ -491,7 +621,8 @@ arxiv_monitor:
         settings = load_settings(environ={})
         self.assertEqual(settings.categories, ["cond-mat.str-el", "cond-mat.mtrl-sci"])
         self.assertEqual(settings.max_papers_per_day, 10)
-        self.assertEqual(settings.min_papers_per_day, 3)
+        self.assertEqual(settings.min_papers_per_day, 5)
+        self.assertEqual(settings.screen_pool, 16)
         self.assertEqual(settings.screen_model, "Qwen/Qwen3.6-27B")
         self.assertEqual(settings.fallback_model, "Qwen/Qwen3.5-9B")
         self.assertEqual(settings.legacy_model, "tencent/Hunyuan-MT-7B")

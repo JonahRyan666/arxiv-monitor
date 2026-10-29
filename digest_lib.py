@@ -25,20 +25,28 @@ except ImportError:  # pragma: no cover - exercised only on bare installs
     yaml = None
 
 
-BACKUP_LABEL = "备选（未完全达标）"
+BACKUP_LABEL = "备选"
 EMPTY_NOTE = "No qualifying papers today."
 EMPTY_NOTE_ZH = "今日没有符合筛选条件的实验论文。"
+DISCUSSION_FOOTER = (
+    "💬 请大家在群里回复讨论：这几篇能不能追、要不要细读？"
+    "回复格式示例：“#2 追 / #4 细读 / #5 跳过”"
+)
 
 DEFAULT_CATEGORIES = ("cond-mat.str-el", "cond-mat.mtrl-sci")
 DEFAULT_SCREEN_MODEL = "Qwen/Qwen3.6-27B"
 DEFAULT_FALLBACK_MODEL = "Qwen/Qwen3.5-9B"
 DEFAULT_LEGACY_MODEL = "tencent/Hunyuan-MT-7B"
 DEFAULT_MAX_PAPERS = 10
-DEFAULT_MIN_PAPERS = 3
+DEFAULT_MIN_PAPERS = 5
 DEFAULT_LOOKBACK_DAYS = 3
 DEFAULT_BATCH_SIZE = 4
 DEFAULT_SCREEN_RETRIES = 2
+DEFAULT_SCREEN_POOL = 16
 DEFAULT_MAX_AUTHORS = 3
+PASS_SCORE = 4.0
+TOPUP_LIMIT = 6
+CLOSE_SCORE_GAP = 1.0
 WINDOW_OVERLAP = timedelta(hours=2)
 MAX_PENDING_ATTEMPTS = 3
 MAX_STORED_TITLES = 4000
@@ -56,9 +64,20 @@ DEFAULT_KEYWORDS = (
     "kitaev",
     "multiferroic",
     "magnetoelectric",
+    "ferroelectric",
     "ferroelectric polarization",
+    "electric polarization",
+    "magnetodielectric",
     "quantum spin ice",
     "spin ice",
+    "quantum magnet",
+    "helimagnet*",
+    "spiral magnet",
+    "noncollinear",
+    "curie-weiss",
+    "spinon",
+    "valence bond",
+    "spin gap",
     "QSL",
 )
 
@@ -116,8 +135,8 @@ DEFAULT_EXPERIMENT_MARKERS = (
 # that matches a key here uses the pattern; any other keyword is a literal
 # (with "*" as a wildcard).
 _KEYWORD_ALIASES = {
-    "spin liquid": r"spin\s+liquids?",
-    "quantum spin liquid": r"quantum\s+spin\s+liquids?",
+    "spin liquid": r"spin[\s-]liquids?",
+    "quantum spin liquid": r"quantum[\s-]spin[\s-]liquids?",
     "quantum spin ice": r"quantum\s+spin\s+ice",
     "spin ice": r"spin\s+ice",
     "magnetoelectric": r"magneto-?electrics?",
@@ -128,7 +147,17 @@ _KEYWORD_ALIASES = {
     "pyrochlore": r"pyrochlores?",
     "triangular lattice": r"triangular[\s-]lattices?",
     "honeycomb": r"honeycombs?",
-    "ferroelectric polarization": r"ferroelectric\s+polarizations?",
+    "ferroelectric": r"ferroelectrics?",
+    "ferroelectric polarization": r"ferroelectric\s+polari[sz]ations?",
+    "electric polarization": r"electric\s+polari[sz]ations?",
+    "magnetodielectric": r"magneto-?dielectrics?",
+    "quantum magnet": r"quantum\s+magnets?",
+    "spiral magnet": r"spiral[\s-](?:magnet\w*|order|magnetic)",
+    "noncollinear": r"non-?collinear",
+    "curie-weiss": r"curie[\s\-–—]weiss",
+    "spinon": r"spinons?",
+    "valence bond": r"valence[\s-]bonds?",
+    "spin gap": r"spin[\s-]gaps?",
     "qsl": r"\bQSLs?\b",
     "dft": r"\bDFT\b",
     "dmrg": r"\bDMRG\b",
@@ -236,6 +265,7 @@ class Settings:
     min_papers_per_day: int = DEFAULT_MIN_PAPERS
     screen_batch_size: int = DEFAULT_BATCH_SIZE
     screen_retries: int = DEFAULT_SCREEN_RETRIES
+    screen_pool: int = DEFAULT_SCREEN_POOL
     max_authors: int = DEFAULT_MAX_AUTHORS
     screen_model: str = DEFAULT_SCREEN_MODEL
     fallback_model: str = DEFAULT_FALLBACK_MODEL
@@ -311,6 +341,20 @@ def passes_prefilter(title: str, summary: str = "", settings: Optional[Settings]
 def prefilter_status(title: str, summary: str = "", settings: Optional[Settings] = None) -> str:
     prefilter = settings.prefilter if settings is not None and settings.prefilter else default_prefilter()
     return prefilter.status(title, summary)
+
+
+def keyword_match_score(title: str, summary: str = "", settings: Optional[Settings] = None) -> int:
+    """How many topic keywords hit. Title matches count more than abstract-only hits."""
+    prefilter = settings.prefilter if settings is not None and settings.prefilter else default_prefilter()
+    title_text = title or ""
+    summary_text = summary or ""
+    title_hits = sum(1 for pattern in prefilter.topics if pattern.search(title_text))
+    summary_only = sum(
+        1
+        for pattern in prefilter.topics
+        if pattern.search(summary_text) and not pattern.search(title_text)
+    )
+    return title_hits * 3 + summary_only
 
 
 def _as_list(value: Any) -> list[str]:
@@ -405,6 +449,7 @@ def load_settings(
     lookback = int(data.get("max_lookback_days", DEFAULT_LOOKBACK_DAYS))
     batch = int(data.get("screen_batch_size", DEFAULT_BATCH_SIZE))
     retries = int(data.get("screen_retries", DEFAULT_SCREEN_RETRIES))
+    screen_pool = int(data.get("screen_pool", DEFAULT_SCREEN_POOL))
     max_authors = int(data.get("max_authors_display", DEFAULT_MAX_AUTHORS))
     screen_model = str(models.get("screen") or DEFAULT_SCREEN_MODEL)
     fallback_model = str(models.get("fallback") or DEFAULT_FALLBACK_MODEL)
@@ -427,6 +472,9 @@ def load_settings(
     env_retries = _env_int(env, "SCREEN_RETRIES")
     if env_retries is not None:
         retries = env_retries
+    env_pool = _env_int(env, "SCREEN_POOL")
+    if env_pool is not None:
+        screen_pool = env_pool
     if _env_str(env, "SILICONFLOW_SCREEN_MODEL"):
         screen_model = _env_str(env, "SILICONFLOW_SCREEN_MODEL") or screen_model
     if _env_str(env, "SILICONFLOW_FALLBACK_MODEL"):
@@ -438,6 +486,7 @@ def load_settings(
     lookback = max(1, lookback)
     batch = max(1, min(8, batch))
     retries = max(0, retries)
+    screen_pool = max(1, screen_pool)
     max_authors = max(1, max_authors)
 
     state_path = Path(_env_str(env, "DIGEST_STATE_PATH") or (root / "digest_state.json"))
@@ -454,6 +503,7 @@ def load_settings(
         min_papers_per_day=min_papers,
         screen_batch_size=batch,
         screen_retries=retries,
+        screen_pool=screen_pool,
         max_authors=max_authors,
         screen_model=screen_model,
         fallback_model=fallback_model,
@@ -1079,7 +1129,13 @@ def _derive_feasible(screening: Mapping[str, Any], paper: Mapping[str, Any]) -> 
 
 
 def decide_screening(paper: Mapping[str, Any], screening: Mapping[str, Any]) -> dict[str, Any]:
-    """Apply hard drops and the three screening criteria."""
+    """Pass experimental papers with real samples and relevant physics.
+
+    Growth feasibility is recorded but does not block a pass: an unclear
+    recipe still belongs on the card. Pure theory and thin-film-only MBE
+    stay hard-dropped. A score of at least PASS_SCORE counts as relevant
+    when the model withheld the physics flag.
+    """
     sample_form = screening.get("sample_form") or "none"
     growth = screening.get("growth_method") or "unknown"
     hard_drop = (not screening.get("experimental")) or is_thin_film_only_mbe(
@@ -1090,12 +1146,23 @@ def decide_screening(paper: Mapping[str, Any], screening: Mapping[str, Any]) -> 
     meets_measured = _derive_measured(screening, paper)
     meets_physics = _derive_physics(screening, paper)
     meets_feasible = _derive_feasible(screening, paper)
+    toxic = bool(_TOXIC_RE.search(_blob(
+        paper.get("title"), paper.get("summary"), growth,
+    )))
+    if toxic:
+        meets_feasible = False
+    score = float(screening.get("score") or 0)
+    has_samples = bool(meets_measured) or bool(screening.get("measurements")) or sample_form in {
+        "single crystal",
+        "polycrystal",
+    }
+    relevant = bool(meets_physics) or bool(screening.get("room_temperature_relevant")) or score >= PASS_SCORE
     passes = bool(
         screening.get("experimental")
         and not hard_drop
-        and meets_measured
-        and meets_physics
-        and meets_feasible
+        and not toxic
+        and has_samples
+        and relevant
     )
     merged = dict(paper)
     merged.update({
@@ -1129,36 +1196,89 @@ def _rank_key(paper: Mapping[str, Any]) -> tuple[Any, ...]:
     )
 
 
+def _identity(paper: Mapping[str, Any]) -> tuple[str, ...]:
+    keys = tuple(sorted(dedup_keys(paper)))
+    if keys:
+        return keys
+    return ("title", clean_title(paper.get("title") or "").lower())
+
+
+def _mark_selected(paper: Mapping[str, Any], backup: bool) -> dict[str, Any]:
+    item = dict(paper)
+    item["backup"] = backup
+    item["backup_label"] = BACKUP_LABEL if backup else ""
+    return item
+
+
+def _llm_scored(paper: Mapping[str, Any]) -> bool:
+    if paper.get("keyword_only"):
+        return False
+    return bool(paper.get("llm_scored", True))
+
+
+def _scores_close(previous: Mapping[str, Any], nxt: Mapping[str, Any]) -> bool:
+    """Ties and near-ties only compare papers ranked on the same scale."""
+    if _llm_scored(previous) != _llm_scored(nxt):
+        return False
+    if _llm_scored(previous):
+        return abs(float(previous.get("score") or 0) - float(nxt.get("score") or 0)) <= CLOSE_SCORE_GAP
+    return abs(int(previous.get("keyword_score") or 0) - int(nxt.get("keyword_score") or 0)) <= 1
+
+
 def select_papers(
     screened: Iterable[Mapping[str, Any]],
     max_papers: int = DEFAULT_MAX_PAPERS,
     min_papers: int = DEFAULT_MIN_PAPERS,
+    unscored: Iterable[Mapping[str, Any]] = (),
+    topup_limit: int = TOPUP_LIMIT,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Pick the day's card.
 
-    Every paper that passes the three criteria is kept, capped at ``max_papers``.
-    If fewer than ``min_papers`` pass, fill up to the minimum with the
-    next-highest non-theory papers and label them as backups. Hard-dropped
-    theory / MBE-film papers are never used as fillers. Returns
-    ``(selected, send_empty_note)``.
+    Papers that pass are kept, capped at ``max_papers``. If fewer than
+    ``min_papers`` pass, top up toward that floor, and allow one extra up to
+    ``topup_limit`` when the next score is tied or close. Top-up order is
+    LLM runner-ups by score, then keyword-prefiltered papers that were not
+    scored. Hard-dropped theory and MBE films are never used. Top-ups are
+    labeled 备选. Returns ``(selected, send_empty_note)``.
     """
     max_papers, min_papers = _clamp_limits(max_papers, min_papers)
-    eligible = [dict(paper) for paper in screened if not paper.get("hard_drop") and not paper.get("screen_error")]
+    topup_cap = min(max_papers, max(min_papers, int(topup_limit)))
+    eligible = [
+        dict(paper)
+        for paper in screened
+        if not paper.get("hard_drop") and not paper.get("screen_error")
+    ]
     qualifying = [paper for paper in eligible if paper.get("passes")]
-    backups = [paper for paper in eligible if not paper.get("passes")]
+    runner_ups = [paper for paper in eligible if not paper.get("passes")]
     qualifying.sort(key=_rank_key)
-    backups.sort(key=_rank_key)
+    runner_ups.sort(key=_rank_key)
+    keyword_pool = [dict(paper) for paper in unscored if not paper.get("hard_drop")]
+    keyword_pool.sort(key=lambda paper: (
+        -int(paper.get("keyword_score") or 0),
+        clean_title(paper.get("title") or "").lower(),
+    ))
     selected: list[dict[str, Any]] = []
+    seen: set[tuple[str, ...]] = set()
     for paper in qualifying[:max_papers]:
-        paper["backup"] = False
-        paper["backup_label"] = ""
-        selected.append(paper)
-    if len(selected) < min_papers:
-        room = min(min_papers - len(selected), max_papers - len(selected))
-        for paper in backups[:room]:
-            paper["backup"] = True
-            paper["backup_label"] = BACKUP_LABEL
-            selected.append(paper)
+        selected.append(_mark_selected(paper, backup=False))
+        seen.add(_identity(paper))
+    if len(selected) >= min_papers:
+        if not selected:
+            return [], True
+        return selected, False
+
+    pool: list[dict[str, Any]] = []
+    for paper in [*runner_ups, *keyword_pool]:
+        identity = _identity(paper)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        pool.append(paper)
+
+    while pool and len(selected) < min_papers:
+        selected.append(_mark_selected(pool.pop(0), backup=True))
+    while pool and len(selected) < topup_cap and _scores_close(selected[-1], pool[0]):
+        selected.append(_mark_selected(pool.pop(0), backup=True))
     if not selected:
         return [], True
     return selected, False
@@ -1217,18 +1337,24 @@ def paper_link(paper: Mapping[str, Any]) -> str:
     return ""
 
 
-def _paper_markdown(paper: Mapping[str, Any], authors_limit: int) -> str:
+def _paper_markdown(paper: Mapping[str, Any], authors_limit: int, number: int) -> str:
     title = _md_text(paper.get("title") or "无题名")
     link = paper_link(paper)
     title_line = f"[{title}]({link})" if link else title
-    lines = []
+    lines = [f"**#{number}**"]
+    scored = _llm_scored(paper) and paper.get("score") is not None
     if paper.get("backup"):
-        lines.append(f"**{BACKUP_LABEL}** · 评分 {format_score(paper.get('score'))}/10")
-    meta = [
-        f"评分 {format_score(paper.get('score'))}/10",
+        if scored:
+            lines.append(f"**{BACKUP_LABEL}** · 评分 {format_score(paper.get('score'))}/10")
+        else:
+            lines.append(f"**{BACKUP_LABEL}**")
+    meta = []
+    if scored:
+        meta.append(f"评分 {format_score(paper.get('score'))}/10")
+    meta.extend([
         _SAMPLE_ZH.get(paper.get("sample_form") or "", paper.get("sample_form") or ""),
         f"生长：{growth_display(paper.get('growth_method'))}",
-    ]
+    ])
     if paper.get("frustration_index") is not None:
         meta.append(f"f={format_score(paper.get('frustration_index'))}")
     if paper.get("T_order"):
@@ -1247,6 +1373,8 @@ def _paper_markdown(paper: Mapping[str, Any], authors_limit: int) -> str:
         lines.append(f"**亮点** {highlight}")
     if summary:
         lines.append(summary)
+    elif paper.get("keyword_only"):
+        lines.append("（未调用模型，仅凭关键词入选）")
     return "\n".join(lines)
 
 
@@ -1277,13 +1405,18 @@ def build_feishu_card(
         title = f"实验凝聚态日报 · {date_label}"
         template = "orange" if qualifying == [] else "blue"
         elements = []
-        for index, paper in enumerate(papers):
-            if index:
+        for index, paper in enumerate(papers, start=1):
+            if index > 1:
                 elements.append({"tag": "hr"})
             elements.append({
                 "tag": "div",
-                "text": {"tag": "lark_md", "content": _paper_markdown(paper, max_authors)},
+                "text": {"tag": "lark_md", "content": _paper_markdown(paper, max_authors, index)},
             })
+        elements.append({"tag": "hr"})
+        elements.append({
+            "tag": "div",
+            "text": {"tag": "lark_md", "content": DISCUSSION_FOOTER},
+        })
     window_label = (
         f"{window_start.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')}"
         f" – {window_end.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')} 北京时间"
