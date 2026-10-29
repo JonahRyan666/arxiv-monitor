@@ -8,8 +8,10 @@ arxiv_monitor:
     - cond-mat.str-el
     - cond-mat.mtrl-sci
 
-  # 标题+摘要的廉价预筛。* 是通配符。大小写不敏感。
-  # 略宽于第一版，避免一天只剩个位数候选。
+  # 标题+摘要的廉价预筛 + 排序。* 是通配符，大小写不敏感。
+  # 核心方向关键词：每命中一个 +4（标题里命中 +8）。
+  # 下面 secondary / polar / negative / hard_negative 不写时用 digest_lib.py 里的默认列表；
+  # 写成空列表 [] 表示关闭该组。
   keywords:
     - spin liquid
     - frustrat*
@@ -18,23 +20,135 @@ arxiv_monitor:
     - triangular lattice
     - honeycomb
     - kitaev
+    - spin ice
     - multiferroic
     - magnetoelectric
-    - ferroelectric
-    - ferroelectric polarization
-    - electric polarization
     - magnetodielectric
-    - quantum spin ice
-    - spin ice
-    - quantum magnet
-    - helimagnet*
-    - spiral magnet
-    - noncollinear
-    - curie-weiss
+    - spin-driven polarization
+    - polar magnet
+    - shastry-sutherland
+    - magnetization plateau
     - spinon
     - valence bond
-    - spin gap
     - QSL
+
+  # 更宽的量子/块体磁性词（每个 +2）。论文至少要命中核心词、这组词或极化词之一才进候选池。
+  secondary_keywords:
+    - antiferromagnet*
+    - ferrimagnet*
+    - quantum magnet
+    - magnetic order
+    - long-range order
+    - spin chain
+    - spin ladder
+    - dimer*
+    - helimagnet*
+    - helical
+    - spiral magnet
+    - cycloid*
+    - chiral magnet
+    - skyrmion*
+    - noncollinear
+    - noncoplanar
+    - curie-weiss
+    - spin gap
+    - spin glass
+    - magnon*
+    - metamagnet*
+    - spin-flop
+    - spin reorientation
+    - magnetostructural
+    - magnetoelastic
+    - neel
+    - Ising
+    - Heisenberg
+    - Dzyaloshinskii
+    - crystal field
+    - local moment
+    - rare-earth
+    - iridate*
+    - spin-orbit coupled
+    - magnetic susceptibility
+    - spin dynamics
+    - spin wave
+    - neutron scattering
+    - neutron diffraction
+    - musr
+    - electron spin resonance
+    - altermagnet*
+    - van der waals magnet
+    - haldane
+
+  # 铁电/极化词：单独命中只 +1（纯铁电排后面）；和磁性词同时出现再 +4。
+  polar_keywords:
+    - ferroelectric
+    - electric polarization
+    - pyroelectric
+    - dielectric
+    - relaxor
+    - polar
+
+  # 应用/离题信号：每命中一个 -3（最多 -12）。
+  negative_keywords:
+    - thin film
+    - epitaxial
+    - heterostructure
+    - sputter*
+    - pulsed laser deposition
+    - PLD
+    - molecular beam
+    - MBE
+    - device
+    - transistor
+    - spintronic*
+    - spin-orbit torque
+    - terahertz emission
+    - catalys*
+    - photocatalys*
+    - photoanode
+    - photoelectrochemical
+    - water splitting
+    - hydrogen evolution
+    - solar cell
+    - photovoltaic*
+    - battery
+    - cathode
+    - anode
+    - electrolyte*
+    - memristor*
+    - synaptic
+    - CMOS
+    - machine learning
+    - neural network
+    - deep learning
+    - dataset
+    - graphene
+    - moire
+    - monolayer
+    - superconduct*
+    - qubit*
+    - molecular dynamics
+    - interatomic potential
+
+  # 没有核心词时，命中这些直接判为离题，不进候选池。
+  hard_negative_keywords:
+    - photocatalys*
+    - photoanode
+    - photoelectrochemical
+    - water splitting
+    - hydrogen evolution
+    - oxygen evolution
+    - solar cell
+    - photovoltaic*
+    - battery
+    - electrolyte*
+    - lithium-ion
+    - supercapacitor*
+    - memristor*
+    - synaptic
+    - CMOS
+    - qubit*
+    - transmon
 
   # 命中这些、且没有测量/样品证据时，预筛直接丢掉。
   theory_markers:
@@ -47,6 +161,11 @@ arxiv_monitor:
     - monte carlo
     - tensor network
     - DMRG
+    - exact diagonalization
+    - mean-field
+    - theory of
+    - theoretical
+    - we predict
 
   # 有这些证据时，即使摘要里也出现 DFT / 模型，仍交给模型筛选。
   experiment_markers:
@@ -83,14 +202,23 @@ arxiv_monitor:
     - PPMS
     - SQUID
     - sintered
+    - floating zone
+    - Bridgman
+    - NMR
+    - ESR
+    - pyroelectric current
+    - thermal conductivity
+    - x-ray diffraction
 
-  max_lookback_days: 3
+  # 固定回看窗口（天）。arXiv API 要等论文公告后（提交后约 1–3.5 天）才能查到，
+  # 所以每天都按完整窗口查询，靠 sent_ids 和筛选缓存去重，不再从上次成功时间开始。
+  max_lookback_days: 6
   max_papers_per_day: 10
   min_papers_per_day: 5
   screen_batch_size: 4
   screen_retries: 2
-  # 关键词命中最多的这几篇才送给模型；其余留作未评分备选。
-  screen_pool: 16
+  # 去掉已发送、已评分过的论文后，预筛得分最高的这几篇送模型（只给标题+摘要）；其余留作未评分备选。
+  screen_pool: 36
   max_authors_display: 3
 
   models:
