@@ -1,12 +1,16 @@
 {
   "sent_ids": [
+    "10.7566/jpsj.95.114703",
+    "10.7566/jpsj.95.114706",
     "2610.35454",
     "2610.36799"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
-    "Stripe antiferromagnetic order and spin dynamics in the Shastry-Sutherland Ising compound Er2Be2GeO7"
+    "Stripe antiferromagnetic order and spin dynamics in the Shastry-Sutherland Ising compound Er2Be2GeO7",
+    "Relaxor Ferroelectric Behavior on Ag-Substituted K 5 Nb 9 O 25 (= (5/6) K 6 Nb 10.8 O 30 ) Single Crystals",
+    "Holonomy Analysis of Optical-polarization Temperature Trajectories in Stress-induced Ferroelectric SrTiO 3"
   ],
   "pending": [],
-  "last_successful_run": "2026-10-29T06:39:36.656295+00:00"
+  "last_successful_run": "2026-10-29T08:09:08.352221+00:00"
 }
