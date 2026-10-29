@@ -26,6 +26,9 @@ except ImportError:  # pragma: no cover - exercised only on bare installs
 
 
 BACKUP_LABEL = "备选"
+PASS_LABEL = "达标"
+FEISHU_CARD_SAFE_BYTES = 26000
+FEISHU_PAPERS_PER_CARD = 5
 EMPTY_NOTE = "No qualifying papers today."
 EMPTY_NOTE_ZH = "今日没有符合筛选条件的实验论文。"
 DISCUSSION_FOOTER = (
@@ -280,6 +283,15 @@ class Settings:
     def model_chain(self) -> list[str]:
         seen: list[str] = []
         for name in (self.screen_model, self.fallback_model, self.legacy_model):
+            cleaned = (name or "").strip()
+            if cleaned and cleaned not in seen:
+                seen.append(cleaned)
+        return seen
+
+    def translation_chain(self) -> list[str]:
+        """Cheap translation models. The screening model is not first in line."""
+        seen: list[str] = []
+        for name in (self.legacy_model, self.fallback_model):
             cleaned = (name or "").strip()
             if cleaned and cleaned not in seen:
                 seen.append(cleaned)
@@ -694,14 +706,16 @@ def parse_arxiv_feed(xml_text: str) -> list[dict[str, Any]]:
             term = category.attrib.get("term")
             if term:
                 categories.append(term)
+        version = arxiv_version_from(id_text)
         papers.append({
             "id": arxiv_id,
             "arxiv_id": arxiv_id,
+            "arxiv_version": version,
             "doi": doi,
             "title": title,
             "summary": summary,
             "authors": authors,
-            "link": f"https://arxiv.org/abs/{arxiv_id}",
+            "link": f"https://arxiv.org/abs/{arxiv_id}{version}",
             "source": "arxiv",
             "published": published.isoformat() if published else None,
             "categories": categories,
@@ -988,7 +1002,7 @@ def normalize_screening_object(raw: Mapping[str, Any]) -> Optional[dict[str, Any
     summary = _collapse_ws(str(raw.get("summary_zh") or ""))
     if experimental is None or score is None:
         return None
-    if not _has_chinese(highlight, 4) or not _has_chinese(summary, 8):
+    if not _has_chinese(highlight, 4):
         return None
     index = raw.get("index")
     if isinstance(index, str) and index.strip().lstrip("-").isdigit():
@@ -1081,6 +1095,74 @@ def parse_screening_batch(text: str, expected: int, ids: Optional[list[str]] = N
     if items is None:
         return None
     return align_screening(items, expected, ids)
+
+
+def parse_labeled_translation(text: str) -> Optional[dict[str, str]]:
+    """Parse the old 【中文题名】 / 【摘要翻译】 block."""
+    if not text:
+        return None
+    title = re.search(r"【中文题名】[ \t]*(.+)", text)
+    abstract = re.search(r"【摘要翻译】[ \t]*(.+)", text, flags=re.S)
+    if not title or not abstract:
+        return None
+    title_zh = title.group(1).strip()
+    abstract_zh = re.split(r"\n【", abstract.group(1).strip(), maxsplit=1)[0].strip()
+    if not _has_chinese(title_zh, 2) or not _has_chinese(abstract_zh, 8):
+        return None
+    return {"title_zh": title_zh, "abstract_zh": abstract_zh}
+
+
+def _translation_item(raw: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+    title_zh = str(raw.get("title_zh") or raw.get("title") or "").strip()
+    abstract_zh = str(raw.get("abstract_zh") or raw.get("abstract") or "").strip()
+    if not _has_chinese(title_zh, 2) or not _has_chinese(abstract_zh, 8):
+        return None
+    index = raw.get("index")
+    if isinstance(index, str) and index.strip().lstrip("-").isdigit():
+        index = int(index.strip())
+    elif isinstance(index, float) and index.is_integer():
+        index = int(index)
+    elif not isinstance(index, int):
+        index = None
+    return {"index": index, "title_zh": title_zh, "abstract_zh": abstract_zh}
+
+
+def parse_translation_payload(text: str, expected: int) -> Optional[list[Optional[dict[str, str]]]]:
+    payload = extract_json(text)
+    items: Optional[list[Any]] = None
+    if isinstance(payload, list):
+        items = payload
+    elif isinstance(payload, dict):
+        for key in ("papers", "results", "items", "translations"):
+            if isinstance(payload.get(key), list):
+                items = payload[key]
+                break
+        if items is None and expected == 1 and any(key in payload for key in ("title_zh", "abstract_zh", "title")):
+            items = [payload]
+    parsed = [_translation_item(item) for item in items or [] if isinstance(item, Mapping)]
+    parsed = [item for item in parsed if item]
+    if not parsed and expected == 1:
+        labeled = parse_labeled_translation(text)
+        if labeled:
+            return [labeled]
+    if not parsed:
+        return None
+    if all(item.get("index") is None for item in parsed):
+        if len(parsed) != expected:
+            return None
+        return [{"title_zh": item["title_zh"], "abstract_zh": item["abstract_zh"]} for item in parsed]
+    aligned: list[Optional[dict[str, str]]] = [None] * expected
+    indexes = [item["index"] for item in parsed if item.get("index") is not None]
+    base = 1 if indexes and min(indexes) >= 1 and max(indexes) == expected else 0
+    for item in parsed:
+        if item.get("index") is None:
+            continue
+        position = item["index"] - base
+        if 0 <= position < expected and aligned[position] is None:
+            aligned[position] = {"title_zh": item["title_zh"], "abstract_zh": item["abstract_zh"]}
+    if any(slot is not None for slot in aligned):
+        return aligned
+    return None
 
 
 def _blob(*parts: Any) -> str:
@@ -1324,10 +1406,33 @@ def growth_display(growth_method: Optional[str]) -> str:
     return text
 
 
+def arxiv_version_from(raw: Optional[str]) -> str:
+    """Return a trailing ``vN`` from an arXiv id or URL, or an empty string."""
+    if not raw:
+        return ""
+    text = str(raw).strip()
+    embedded = re.search(r"arxiv\.org/(?:abs|pdf)/([^?\s#]+)", text, re.IGNORECASE)
+    if embedded:
+        text = re.sub(r"\.pdf$", "", embedded.group(1), flags=re.IGNORECASE)
+    text = re.sub(r"^arxiv:", "", text, flags=re.IGNORECASE).strip()
+    match = re.search(r"(v\d+)$", text, re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
 def paper_link(paper: Mapping[str, Any]) -> str:
-    arxiv_id = normalize_arxiv_id(paper.get("arxiv_id") or paper.get("link") or paper.get("id"))
+    explicit = str(paper.get("link") or "")
+    arxiv_id = normalize_arxiv_id(paper.get("arxiv_id") or explicit or paper.get("id"))
+    version = str(paper.get("arxiv_version") or "")
+    if version and not version.startswith("v"):
+        version = f"v{version}"
+    if not version:
+        version = (
+            arxiv_version_from(paper.get("arxiv_id"))
+            or arxiv_version_from(explicit)
+            or arxiv_version_from(paper.get("id"))
+        )
     if arxiv_id:
-        return f"https://arxiv.org/abs/{arxiv_id}"
+        return f"https://arxiv.org/abs/{arxiv_id}{version}"
     doi = normalize_doi(paper.get("doi") or paper.get("id") or paper.get("link"))
     if doi:
         return f"https://doi.org/{doi}"
@@ -1337,45 +1442,213 @@ def paper_link(paper: Mapping[str, Any]) -> str:
     return ""
 
 
+def _keep_paragraphs(text: str) -> str:
+    cleaned = (text or "").replace("\r\n", "\n").strip()
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned
+
+
+def _label_line(paper: Mapping[str, Any]) -> str:
+    kind = BACKUP_LABEL if paper.get("backup") else PASS_LABEL
+    if _llm_scored(paper) and paper.get("score") is not None:
+        return f"**{kind}** · 评分 {format_score(paper.get('score'))}/10"
+    return f"**{kind}**"
+
+
+def _sample_label(paper: Mapping[str, Any]) -> str:
+    form = paper.get("sample_form") or ""
+    label = _SAMPLE_ZH.get(form, "")
+    if label and label != "样品形式未说明":
+        return label
+    if form and form != "none":
+        return str(form)
+    return "样品未说明"
+
+
+def _temperature_label(paper: Mapping[str, Any]) -> str:
+    parts = []
+    if paper.get("theta_CW"):
+        parts.append(f"θCW={paper['theta_CW']}")
+    if paper.get("T_order"):
+        parts.append(f"T={paper['T_order']}")
+    if paper.get("frustration_index") is not None:
+        parts.append(f"f={format_score(paper.get('frustration_index'))}")
+    if paper.get("room_temperature_relevant"):
+        parts.append("室温附近")
+    return "，".join(parts) if parts else "温度未说明"
+
+
+def _source_label(paper: Mapping[str, Any]) -> str:
+    source = paper.get("source") or ""
+    if source == "arxiv":
+        return "arXiv"
+    if source == "jpsj":
+        return "JPSJ"
+    return source or "来源未知"
+
+
+def _meta_line(paper: Mapping[str, Any]) -> str:
+    growth = growth_display(paper.get("growth_method"))
+    if growth == "未说明":
+        growth = "生长未说明"
+    return " · ".join([
+        _sample_label(paper),
+        growth,
+        _temperature_label(paper),
+        _source_label(paper),
+    ])
+
+
 def _paper_markdown(paper: Mapping[str, Any], authors_limit: int, number: int) -> str:
     title = _md_text(paper.get("title") or "无题名")
     link = paper_link(paper)
     title_line = f"[{title}]({link})" if link else title
-    lines = [f"**#{number}**"]
-    scored = _llm_scored(paper) and paper.get("score") is not None
-    if paper.get("backup"):
-        if scored:
-            lines.append(f"**{BACKUP_LABEL}** · 评分 {format_score(paper.get('score'))}/10")
-        else:
-            lines.append(f"**{BACKUP_LABEL}**")
-    meta = []
-    if scored:
-        meta.append(f"评分 {format_score(paper.get('score'))}/10")
-    meta.extend([
-        _SAMPLE_ZH.get(paper.get("sample_form") or "", paper.get("sample_form") or ""),
-        f"生长：{growth_display(paper.get('growth_method'))}",
-    ])
-    if paper.get("frustration_index") is not None:
-        meta.append(f"f={format_score(paper.get('frustration_index'))}")
-    if paper.get("T_order"):
-        meta.append(f"T={_md_text(str(paper['T_order']))}")
-    if paper.get("room_temperature_relevant"):
-        meta.append("室温附近")
-    source = "arXiv" if paper.get("source") == "arxiv" else "JPSJ" if paper.get("source") == "jpsj" else (paper.get("source") or "")
-    if source:
-        meta.append(source)
-    lines.append(title_line)
-    lines.append(short_authors(paper.get("authors") or [], authors_limit))
-    lines.append(" · ".join(part for part in meta if part))
-    highlight = _md_text(paper.get("highlight_zh") or "")
-    summary = _md_text(paper.get("summary_zh") or "")
+    title_zh = _keep_paragraphs(str(paper.get("title_zh") or ""))
+    abstract_zh = _keep_paragraphs(str(paper.get("abstract_zh") or ""))
+    highlight = _keep_paragraphs(str(paper.get("highlight_zh") or ""))
+    lines = [
+        f"**#{number}**",
+        _label_line(paper),
+        title_line,
+        f"【中文题名】{title_zh or '（题名翻译缺失）'}",
+        short_authors(paper.get("authors") or [], authors_limit),
+        _meta_line(paper),
+    ]
+    if abstract_zh:
+        lines.append(f"【摘要翻译】{abstract_zh}")
+    elif (paper.get("summary") or "").strip():
+        lines.append("【摘要翻译】（翻译未成功，附英文摘要）")
+        lines.append(_keep_paragraphs(str(paper.get("summary") or "")))
+    else:
+        lines.append("【摘要翻译】（无摘要）")
+    if link:
+        lines.append(link)
     if highlight:
-        lines.append(f"**亮点** {highlight}")
-    if summary:
-        lines.append(summary)
+        lines.append(f"【亮点/筛选理由】{highlight}")
     elif paper.get("keyword_only"):
-        lines.append("（未调用模型，仅凭关键词入选）")
+        lines.append("【亮点/筛选理由】关键词匹配入选，供讨论是否细读。")
+    else:
+        lines.append("【亮点/筛选理由】（未给出）")
     return "\n".join(lines)
+
+
+def _card_shell(title: str, template: str, elements: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": title},
+            "template": template,
+        },
+        "elements": elements,
+    }
+
+
+def feishu_card_size(card: Mapping[str, Any]) -> int:
+    """UTF-8 size of the card JSON. Signing adds only a small envelope."""
+    return len(json.dumps(card, ensure_ascii=False).encode("utf-8"))
+
+
+def _digest_context(
+    papers: list[Mapping[str, Any]],
+    generated_at: datetime,
+    window_start: datetime,
+    window_end: datetime,
+    stats: Optional[Mapping[str, Any]],
+) -> dict[str, Any]:
+    if generated_at.tzinfo is None:
+        generated_at = generated_at.replace(tzinfo=timezone.utc)
+    local = generated_at.astimezone(timezone(timedelta(hours=8)))
+    qualifying = [paper for paper in papers if not paper.get("backup")]
+    window_label = (
+        f"{window_start.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')}"
+        f" – {window_end.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')} 北京时间"
+    )
+    note = f"达标 {len(qualifying)} 篇，备选 {len(papers) - len(qualifying)} 篇。窗口 {window_label}。"
+    if stats and stats.get("prefiltered") is not None:
+        note += f" 预筛 {stats['prefiltered']} 篇。"
+    return {
+        "date_label": local.strftime("%Y-%m-%d"),
+        "template": "orange" if papers and not qualifying else ("grey" if not papers else "blue"),
+        "note": note,
+        "qualifying": len(qualifying),
+        "backup": len(papers) - len(qualifying),
+    }
+
+
+def _note_element(text: str) -> dict[str, Any]:
+    return {"tag": "note", "elements": [{"tag": "plain_text", "content": text}]}
+
+
+def _papers_card(
+    numbered: list[tuple[int, Mapping[str, Any]]],
+    *,
+    date_label: str,
+    template: str,
+    note: str,
+    max_authors: int,
+    include_footer: bool,
+) -> dict[str, Any]:
+    elements: list[dict[str, Any]] = []
+    for offset, (number, paper) in enumerate(numbered):
+        if offset:
+            elements.append({"tag": "hr"})
+        elements.append({
+            "tag": "div",
+            "text": {"tag": "lark_md", "content": _paper_markdown(paper, max_authors, number)},
+        })
+    if include_footer:
+        elements.append({"tag": "hr"})
+        elements.append({"tag": "div", "text": {"tag": "lark_md", "content": DISCUSSION_FOOTER}})
+    elements.append(_note_element(note))
+    return _card_shell(f"实验凝聚态日报 · {date_label}", template, elements)
+
+
+def _header_card(context: Mapping[str, Any], parts: int) -> dict[str, Any]:
+    body = (
+        f"达标 {context['qualifying']} 篇，备选 {context['backup']} 篇。"
+        f"摘要较长，分 {parts} 条消息发送。\n{context['note']}"
+    )
+    return _card_shell(
+        f"实验凝聚态日报 · {context['date_label']}",
+        context["template"],
+        [
+            {"tag": "div", "text": {"tag": "lark_md", "content": body}},
+        ],
+    )
+
+
+def _pack_paper_groups(
+    papers: list[Mapping[str, Any]],
+    *,
+    context: Mapping[str, Any],
+    max_authors: int,
+    max_bytes: int,
+    papers_per_card: int,
+) -> list[list[tuple[int, Mapping[str, Any]]]]:
+    groups: list[list[tuple[int, Mapping[str, Any]]]] = []
+    current: list[tuple[int, Mapping[str, Any]]] = []
+    for number, paper in enumerate(papers, start=1):
+        trial = [*current, (number, paper)]
+        too_many = len(trial) > papers_per_card
+        trial_card = _papers_card(
+            trial,
+            date_label=context["date_label"],
+            template=context["template"],
+            note=context["note"],
+            max_authors=max_authors,
+            include_footer=True,
+        )
+        too_big = feishu_card_size(trial_card) > max_bytes and len(current) >= 1
+        if too_many or too_big:
+            groups.append(current)
+            current = [(number, paper)]
+        else:
+            current = trial
+    if current:
+        groups.append(current)
+    return groups
 
 
 def build_feishu_card(
@@ -1387,55 +1660,75 @@ def build_feishu_card(
     empty_note: bool = False,
     max_authors: int = DEFAULT_MAX_AUTHORS,
     stats: Optional[Mapping[str, Any]] = None,
+    include_footer: bool = True,
 ) -> dict[str, Any]:
-    if generated_at.tzinfo is None:
-        generated_at = generated_at.replace(tzinfo=timezone.utc)
-    local = generated_at.astimezone(timezone(timedelta(hours=8)))
-    date_label = local.strftime("%Y-%m-%d")
-    qualifying = [paper for paper in papers if not paper.get("backup")]
-    backup_count = len(papers) - len(qualifying)
+    context = _digest_context(papers, generated_at, window_start, window_end, stats)
     if empty_note or not papers:
-        title = f"实验凝聚态日报 · {date_label}"
-        template = "grey"
         body = f"**{EMPTY_NOTE}**\n{EMPTY_NOTE_ZH}"
-        elements: list[dict[str, Any]] = [
-            {"tag": "div", "text": {"tag": "lark_md", "content": body}}
-        ]
-    else:
-        title = f"实验凝聚态日报 · {date_label}"
-        template = "orange" if qualifying == [] else "blue"
-        elements = []
-        for index, paper in enumerate(papers, start=1):
-            if index > 1:
-                elements.append({"tag": "hr"})
-            elements.append({
-                "tag": "div",
-                "text": {"tag": "lark_md", "content": _paper_markdown(paper, max_authors, index)},
-            })
-        elements.append({"tag": "hr"})
-        elements.append({
-            "tag": "div",
-            "text": {"tag": "lark_md", "content": DISCUSSION_FOOTER},
-        })
-    window_label = (
-        f"{window_start.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')}"
-        f" – {window_end.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')} 北京时间"
+        return _card_shell(
+            f"实验凝聚态日报 · {context['date_label']}",
+            "grey",
+            [
+                {"tag": "div", "text": {"tag": "lark_md", "content": body}},
+                _note_element(context["note"]),
+            ],
+        )
+    return _papers_card(
+        list(enumerate(papers, start=1)),
+        date_label=context["date_label"],
+        template=context["template"],
+        note=context["note"],
+        max_authors=max_authors,
+        include_footer=include_footer,
     )
-    note = f"达标 {len(qualifying)} 篇，备选 {backup_count} 篇。窗口 {window_label}。"
-    if stats and stats.get("prefiltered") is not None:
-        note += f" 预筛 {stats['prefiltered']} 篇。"
-    elements.append({
-        "tag": "note",
-        "elements": [{"tag": "plain_text", "content": note}],
-    })
-    return {
-        "config": {"wide_screen_mode": True},
-        "header": {
-            "title": {"tag": "plain_text", "content": title},
-            "template": template,
-        },
-        "elements": elements,
-    }
+
+
+def build_feishu_cards(
+    papers: list[Mapping[str, Any]],
+    *,
+    generated_at: datetime,
+    window_start: datetime,
+    window_end: datetime,
+    empty_note: bool = False,
+    max_authors: int = DEFAULT_MAX_AUTHORS,
+    stats: Optional[Mapping[str, Any]] = None,
+    max_bytes: int = FEISHU_CARD_SAFE_BYTES,
+    papers_per_card: int = FEISHU_PAPERS_PER_CARD,
+) -> list[dict[str, Any]]:
+    """One card when it fits. Otherwise a header plus groups of at most five papers.
+
+    Numbering stays continuous. The discussion footer is only on the last card.
+    """
+    single = build_feishu_card(
+        papers,
+        generated_at=generated_at,
+        window_start=window_start,
+        window_end=window_end,
+        empty_note=empty_note,
+        max_authors=max_authors,
+        stats=stats,
+    )
+    if not papers or empty_note or feishu_card_size(single) <= max_bytes:
+        return [single]
+    context = _digest_context(papers, generated_at, window_start, window_end, stats)
+    groups = _pack_paper_groups(
+        papers,
+        context=context,
+        max_authors=max_authors,
+        max_bytes=max_bytes,
+        papers_per_card=max(1, papers_per_card),
+    )
+    cards = [_header_card(context, parts=1 + len(groups))]
+    for index, group in enumerate(groups):
+        cards.append(_papers_card(
+            group,
+            date_label=context["date_label"],
+            template=context["template"],
+            note=context["note"],
+            max_authors=max_authors,
+            include_footer=index == len(groups) - 1,
+        ))
+    return cards
 
 
 def feishu_sign(timestamp: str, secret: str) -> str:
@@ -1500,6 +1793,8 @@ def public_paper(paper: Mapping[str, Any]) -> dict[str, Any]:
         "room_temperature_relevant": bool(paper.get("room_temperature_relevant")),
         "highlight_zh": paper.get("highlight_zh"),
         "summary_zh": paper.get("summary_zh"),
+        "title_zh": paper.get("title_zh"),
+        "abstract_zh": paper.get("abstract_zh"),
     }
 
 
