@@ -2,13 +2,19 @@
   "sent_ids": [
     "10.7566/jpsj.95.114703",
     "10.7566/jpsj.95.114706",
+    "2610.33556",
     "2610.34230",
     "2610.34312",
     "2610.34536",
     "2610.34596",
     "2610.34736",
+    "2610.35341",
     "2610.35454",
-    "2610.36799"
+    "2610.36140",
+    "2610.36799",
+    "2610.38528",
+    "2610.39669",
+    "2610.40176"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -19,10 +25,40 @@
     "Crystal-surface polarity enables nonreciprocal transport in a centrosymmetric kagome magnet",
     "Optimised growth of epitaxial D019 Mn3Ge(0001) thin films via single target sputtering",
     "Non-magnetic impurities as a quantum microscope of finite size effects in spin chains",
-    "Quasiparticle Interactions in the $S = 1/2$ Heisenberg Antiferromagnetic Chain CuPzN"
+    "Quasiparticle Interactions in the $S = 1/2$ Heisenberg Antiferromagnetic Chain CuPzN",
+    "Giant piezomagnetic response driven by spin reorientation in the topological Kagome magnet TbMn6Sn6",
+    "High-Field Heat Capacity of Atacamite Cu$_2$Cl(OH)$_3$ for $\\mathbf{H} \\parallel b$ axis: From Antiferromagnetic Order to Correlated Disorder",
+    "Anisotropic magneto-elastic coupling in the quasi-2D Ising magnet Li$_2$FeSiO$_4$ and thermodynamic signature of low-energy orbital excitations",
+    "Anisotropic Structural and Magnetic Response in Sm$_2$Ir$_8$Al$_{31}$: Al-Sublattice Reconstruction upon Sm Substitution",
+    "Cage-related crystal-field effects in the paramagnetic range of PrB$_6$",
+    "First-order magnetostructural transition in Ni-Mn-Sn powder - A matter of particle and grain size"
   ],
   "pending": [],
   "screened": {
+    "10.1021/acsnano.6c10644": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [
+          "SHG",
+          "phase-field simulations"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "关于极化斯格明子超结构中高阶光学非线性的研究，涉及光子和拓扑光子学，与块体磁性测量和量子磁体物理无关。"
+      }
+    },
     "10.1103/w38j-dmbg": {
       "at": "2026-10-29T08:27:08.571964+00:00",
       "result": {
@@ -44,6 +80,50 @@
         "topic": "off_topic",
         "score": 1.0,
         "highlight_zh": "过渡金属三硫族化合物的非线性光学响应研究，无磁性或介电测量。"
+      }
+    },
+    "10.7566/jpsj.95.113702": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "NFS"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 3.0,
+        "highlight_zh": "EuFe2As2 单晶的核前向散射研究，关注铁基超导母体中的向列态和磁/电荷对称性破缺，非阻挫磁体或量子自旋液体核心方向。"
+      }
+    },
+    "10.7566/jpsj.95.114003": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论/数值模拟工作，提出变分量子-神经混合虚时演化算法，无实验样品和测量数据。"
       }
     },
     "10.7566/jpsj.95.114005": {
@@ -89,6 +169,27 @@
         "topic": "peripheral",
         "score": 3.0,
         "highlight_zh": "轻掺杂单层高温铜氧化物La2CuO4+δ单晶的磁化率和电阻率测量，揭示了反铁磁序与超导序共存区域的自旋关联演化，但属于常规铜氧化物超导研究，非阻挫磁体或量子自旋液体核心方向。"
+      }
+    },
+    "10.7566/jpsj.95.118001": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "勘误文章，无新实验数据或物理内容。"
       }
     },
     "2610.32457": {
@@ -315,6 +416,29 @@
         "highlight_zh": "炭黑-羧甲基纤维素水凝胶的流变学和介电弛豫研究，属于软物质物理，与凝聚态磁性或量子自旋液体完全无关。"
       }
     },
+    "2610.33870": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "ESR"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "实验研究ZnO微粒中的顺磁缺陷，属于半导体缺陷物理，与量子磁性或磁电耦合核心方向无关。"
+      }
+    },
     "2610.34195": {
       "at": "2026-10-29T08:27:08.571964+00:00",
       "result": {
@@ -403,6 +527,27 @@
         "topic": "adjacent",
         "score": 7.0,
         "highlight_zh": "在中心对称的Kagome磁体TbMn6Sn6-xInx中，利用晶体表面极性实现了零场非互易输运，展示了拓扑能带相关的表面态对非线性电导的贡献。"
+      }
+    },
+    "2610.34342": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯数值模拟（量子蒙特卡洛），研究Kagome晶格上的费米子超流相变，无实验测量。"
       }
     },
     "2610.34439": {
@@ -629,6 +774,27 @@
         "highlight_zh": "通过热膨胀和比热测量研究了准二维Ising磁体Li2FeSiO4中的各向异性磁弹耦合，并分离出低能轨道激发的热力学特征。"
       }
     },
+    "2610.35401": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论计算工作，推导塞曼场诱导的三自旋相互作用，无实验样品和测量数据。"
+      }
+    },
     "2610.35803": {
       "at": "2026-10-29T08:27:08.571964+00:00",
       "result": {
@@ -784,6 +950,27 @@
         "highlight_zh": "在手性晶格非共面反铁磁体CoTa3S6中观测到了由非共面反铁磁序诱导的自发拓扑二极管效应，实现了零场下的非互易电子输运。"
       }
     },
+    "2610.37092": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，讨论开放量子系统中的对称性破缺和量子费雪信息，无实验样品。"
+      }
+    },
     "2610.37233": {
       "at": "2026-10-29T08:27:08.571964+00:00",
       "result": {
@@ -846,7 +1033,656 @@
         "score": 0.0,
         "highlight_zh": "纯理论计算工作，使用无限密度矩阵重整化群（iDMRG）研究SU(3)三角晶格Hofstadter-Hubbard模型中的拓扑临界性，无实验样品。"
       }
+    },
+    "2610.37589": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论/模拟工作，研究动力学量子模拟中的量子信息处理，无实验样品。"
+      }
+    },
+    "2610.37736": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [
+          "MOKE",
+          "magnetoresistance"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "La0.7Sr0.3MnO3/SrMnO3多层膜中的界面磁各向异性调控，属于薄膜异质结和自旋电子学器件研究，非块体单晶或多晶的量子磁体研究。"
+      }
+    },
+    "2610.38138": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [
+          "SHG",
+          "phase-field simulations"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "关于极化斯格明子超结构中高阶光学非线性的研究，涉及光子和拓扑光子学，与块体磁性测量和量子磁体物理无关。"
+      }
+    },
+    "2610.38302": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "自旋电子学器件方向，结合 DFT 和蒙特卡洛模拟研究 Mn3Al 的磁性和输运性质，无实验样品制备和测量。"
+      }
+    },
+    "2610.38501": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论/数值模拟工作，研究框架结构在压力下的稳定性，与凝聚态磁性实验无关。"
+      }
+    },
+    "2610.38528": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "magnetization",
+          "magnetostriction",
+          "Raman"
+        ],
+        "theta_CW": null,
+        "T_order": "310",
+        "frustration_index": null,
+        "room_temperature_relevant": true,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "adjacent",
+        "score": 7.0,
+        "highlight_zh": "Kagome磁体TbMn6Sn6单晶的巨压磁响应研究，涉及自旋重取向和晶格耦合，转变温度接近室温。"
+      }
+    },
+    "2610.38614": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论计算工作，研究手性Ising和XY模型的共形谱，无实验样品和测量数据。"
+      }
+    },
+    "2610.38702": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，讨论模糊球方法的有效场论起源，无实验样品和测量数据。"
+      }
+    },
+    "2610.38928": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "polarization",
+          "electromechanical"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "报道了氮化硼范德华超结构中的滑移弛豫铁电性，测量了电极化和机电响应，但属于纯铁电/介电工作，无磁性测量，偏离核心方向。"
+      }
+    },
+    "2610.38966": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "x-ray diffraction",
+          "neutron diffraction",
+          "x-ray emission spectroscopy",
+          "transport"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "BaFe2S3高压下的超导与磁序共存研究，主要关注轨道选择性离域机制，属于超导物理范畴，偏离量子自旋液体和阻挫磁体的核心方向。"
+      }
+    },
+    "2610.38989": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "solid-state",
+        "measurements": [
+          "magnetization",
+          "EPR"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 4.0,
+        "highlight_zh": "分子簇磁性研究，通过磁化和EPR测量确定了交换相互作用和基态自旋结构，但属于有限尺寸分子体系而非块体阻挫磁体，且缺乏比热等体相测量。"
+      }
+    },
+    "2610.39059": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，探讨了多体量子态中“魔法”（magic）资源在热化和动力学演化中的命运，涉及横场伊辛模型和 Kitaev 自旋液体模型。"
+      }
+    },
+    "2610.39150": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，建立电荷手性的电多极矩判据，无实验样品和测量。"
+      }
+    },
+    "2610.39206": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，研究反铁磁/交替磁体结中的自旋流，无实验测量。"
+      }
+    },
+    "2610.39213": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯计算工作（路径积分分子动力学、声子输运计算），研究热膨胀和热导率，无磁性测量，无实验样品。"
+      }
+    },
+    "2610.39218": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论计算，研究手性Ising和XY模型的共形谱，无实验样品和测量数据。"
+      }
+    },
+    "2610.39250": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论计算工作，研究二维铅卤钙钛矿中的自旋纹理，无实验样品和测量数据。"
+      }
+    },
+    "2610.39669": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "specific heat"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "adjacent",
+        "score": 7.0,
+        "highlight_zh": "研究了阻挫锯齿链化合物 Atacamite 在高磁场下的比热，观察到从反铁磁有序到场诱导类自旋液体态的转变，并拟合了自旋能隙。"
+      }
+    },
+    "2610.39696": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "PLD",
+        "measurements": [
+          "dielectric",
+          "polarization"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": true,
+        "meets_measured_data": true,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "通过脉冲激光沉积制备了 GaFeO3 薄膜，报道了室温下的铁电性、亚铁磁性及强磁介电耦合，主要面向器件应用。"
+      }
+    },
+    "2610.40139": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "chi(T)"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 5.0,
+        "highlight_zh": "实验研究了钙钛矿氧化物的结构和磁性，观察到铁磁、自旋玻璃等转变，但缺乏具体的阻挫几何或量子自旋液体特征，属于普通磁性材料研究。"
+      }
+    },
+    "2610.40149": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，建立了基于定向自旋空间群框架的自旋轨道耦合响应理论，分析了多铁性和反铁磁体中的物理效应。"
+      }
+    },
+    "2610.40157": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "Raman",
+          "neutron"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "半导体合金 ZnMnTe 的光学和声子性质研究，涉及拉曼和中子散射，与磁性阻挫或量子自旋液体无关。"
+      }
+    },
+    "2610.40176": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "specific heat",
+          "thermal expansion",
+          "susceptibility",
+          "neutron"
+        ],
+        "theta_CW": null,
+        "T_order": "6.7",
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 5.0,
+        "highlight_zh": "PrB6单晶的比热、热膨胀和磁化率测量揭示了晶场基态的动态劈裂和离心Jahn-Teller效应，属于稀土硼化物中的常规磁有序研究，非核心阻挫方向。"
+      }
+    },
+    "2610.40215": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "第一性原理计算研究反铁磁拓扑绝缘体薄膜中的自旋轨道力矩，属于自旋电子学器件物理，无实验样品测量。"
+      }
+    },
+    "2610.40296": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "χ(T)",
+          "specific heat",
+          "magnetization"
+        ],
+        "theta_CW": "-1.25",
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 5.0,
+        "highlight_zh": "Gd2TeO6多晶样品的磁制冷效应研究，报道了磁化率和比热数据，无长程序但非阻挫磁体核心方向。"
+      }
+    },
+    "2610.40297": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论计算工作，使用DMRG和场论方法研究梯子模型中的拓扑量子自旋液体，无实验样品。"
+      }
+    },
+    "2610.40416": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，推导腔磁振子-光子相互作用的拉格朗日量和哈密顿量形式，无实验样品和测量数据。"
+      }
+    },
+    "2610.40526": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论工作，提出量子物质中的准相概念，基于自旋链模型的理论推导，无实验数据。"
+      }
+    },
+    "2610.40567": {
+      "at": "2026-10-30T06:40:22.161945+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论/数值模拟工作，研究表面码中的代数强-弱对称性破缺，无实体材料实验。"
+      }
     }
   },
-  "last_successful_run": "2026-10-29T08:27:08.571964+00:00"
+  "last_successful_run": "2026-10-30T06:40:22.161945+00:00"
 }
