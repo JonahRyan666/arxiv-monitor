@@ -37,17 +37,22 @@
     "2611.02360",
     "2611.02464",
     "2611.02703",
+    "2611.02804",
     "2611.02820",
     "2611.03822",
     "2611.04229",
+    "2611.04649",
     "2611.04675",
     "2611.04845",
     "2611.04984",
     "2611.05466",
+    "2611.05654",
     "2611.06163",
     "2611.06274",
+    "2611.06326",
     "2611.06526",
-    "2611.06676"
+    "2611.06676",
+    "2611.06811"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -95,28 +100,14 @@
     "Quantitatively Probing the Tilt Angle Failures in 4D-STEM Polarisation Analysis",
     "Millikelvin magnetometry up to 30~T using a multi-cross micro-Hall sensor",
     "Toward a Quantum Information Foundation for Neutron Scattering",
-    "Spin swapping mediated by spin-orbital textures in centrosymmetric multiorbital materials"
+    "Spin swapping mediated by spin-orbital textures in centrosymmetric multiorbital materials",
+    "Strain control of magneto-optical properties of ultra-thin Ni-Mn-Ga films grown by magnetron sputtering",
+    "DefectSkills: Guiding AI agents through first-principles calculations for point defects in semiconductors and insulators",
+    "Evolutionary Design of Interpretable Spatial Descriptors for Structure-Property Relationship Discovery",
+    "Hydrogen-induced modification of the local charge density in MnSb$_2$Te$_4$",
+    "Observing oscillations using the non-magnetic and magnetic spin Hall effect in a non-collinear antiferromagnet"
   ],
-  "pending": [
-    {
-      "arxiv_id": "2611.06326",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.05654",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.06811",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    }
-  ],
+  "pending": [],
   "screened": {
     "10.1002/adfm.79184": {
       "at": "2026-10-31T06:30:24.021701+00:00",
@@ -3308,5 +3299,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-05T07:36:12.147668+00:00"
+  "last_successful_run": "2026-11-05T18:16:19.857268+00:00"
 }
