@@ -37,9 +37,11 @@ DISCUSSION_FOOTER = (
 )
 
 DEFAULT_CATEGORIES = ("cond-mat.str-el", "cond-mat.mtrl-sci")
-DEFAULT_SCREEN_MODEL = "Qwen/Qwen3.6-27B"
-DEFAULT_FALLBACK_MODEL = "Qwen/Qwen3.5-9B"
-DEFAULT_LEGACY_MODEL = "tencent/Hunyuan-MT-7B"
+# OpenRouter :free chat models verified against https://openrouter.ai/api/v1/models
+# on 2026-11-05. google/gemma-3-27b-it:free is not on that list.
+DEFAULT_SCREEN_MODEL = "google/gemma-4-31b-it:free"
+DEFAULT_FALLBACK_MODEL = "nvidia/nemotron-3.5-lightning:free"
+DEFAULT_LEGACY_MODEL = "google/gemma-4-26b-a4b-it:free"
 DEFAULT_MAX_PAPERS = 10
 DEFAULT_MIN_PAPERS = 5
 DEFAULT_LOOKBACK_DAYS = 6
@@ -702,6 +704,15 @@ def _env_str(environ: Mapping[str, str], key: str) -> Optional[str]:
     return text or None
 
 
+def _first_env(environ: Mapping[str, str], *keys: str) -> Optional[str]:
+    """First non-empty env value. Earlier keys win, so new names override old aliases."""
+    for key in keys:
+        value = _env_str(environ, key)
+        if value:
+            return value
+    return None
+
+
 def _env_int(environ: Mapping[str, str], key: str) -> Optional[int]:
     raw = _env_str(environ, key)
     if raw is None:
@@ -808,12 +819,16 @@ def load_settings(
     env_pool = _env_int(env, "SCREEN_POOL")
     if env_pool is not None:
         screen_pool = env_pool
-    if _env_str(env, "SILICONFLOW_SCREEN_MODEL"):
-        screen_model = _env_str(env, "SILICONFLOW_SCREEN_MODEL") or screen_model
-    if _env_str(env, "SILICONFLOW_FALLBACK_MODEL"):
-        fallback_model = _env_str(env, "SILICONFLOW_FALLBACK_MODEL") or fallback_model
-    if _env_str(env, "SILICONFLOW_MODEL"):
-        legacy_model = _env_str(env, "SILICONFLOW_MODEL") or legacy_model
+    # LLM_* is the current name. SILICONFLOW_* remains an alias when the new name is unset.
+    screen_override = _first_env(env, "LLM_SCREEN_MODEL", "SILICONFLOW_SCREEN_MODEL")
+    if screen_override:
+        screen_model = screen_override
+    fallback_override = _first_env(env, "LLM_FALLBACK_MODEL", "SILICONFLOW_FALLBACK_MODEL")
+    if fallback_override:
+        fallback_model = fallback_override
+    translate_override = _first_env(env, "LLM_TRANSLATE_MODEL", "SILICONFLOW_MODEL")
+    if translate_override:
+        legacy_model = translate_override
 
     max_papers, min_papers = _clamp_limits(max_papers, min_papers)
     lookback = max(1, lookback)

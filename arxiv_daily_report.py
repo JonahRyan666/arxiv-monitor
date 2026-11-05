@@ -4,9 +4,12 @@
 
 Fetches arXiv (cond-mat.str-el / cond-mat.mtrl-sci by default) and JPSJ via
 Crossref, drops off-topic and obvious theory with a keyword prefilter, then
-asks SiliconFlow to score the remaining papers. One Feishu interactive card
-is sent per run. Sent ids and the last success time are stored in
-digest_state.json so a later step can commit them onto the ``state`` branch.
+asks an OpenAI-compatible chat model to score the remaining papers. Production
+should set LLM_BASE_URL to https://openrouter.ai/api/v1/chat/completions and
+OPENROUTER_API_KEY. If LLM_BASE_URL is unset, the client falls back to
+SiliconFlow. One Feishu interactive card is sent per run. Sent ids and the
+last success time are stored in digest_state.json so a later step can commit
+them onto the ``state`` branch.
 """
 
 from __future__ import annotations
@@ -51,7 +54,11 @@ from digest_lib import (
 )
 
 JPSJ_ISSNS = ("0031-9015", "1347-4073")
+# Full chat-completions endpoint, not the /v1 prefix. Production should set
+# LLM_BASE_URL (or OPENAI_COMPAT_URL) to OPENROUTER_URL. This SiliconFlow URL
+# is only the fallback when both env vars are unset.
 SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 ARXIV_API = "https://export.arxiv.org/api/query"
 
 CROSSREF_TIMEOUT = int(os.getenv("CROSSREF_TIMEOUT", "30"))
@@ -67,7 +74,12 @@ LAST_ARXIV_QUERY_TS = 0.0
 
 
 class SiliconFlowAuthError(RuntimeError):
-    """The SiliconFlow key was rejected. Do not try another model or advance the window."""
+    """Auth, permission, or billing failure. Do not try another model or advance the window.
+
+    Covers HTTP 401/403 and HTTP 402 (empty balance). A 402 is terminal for the
+    whole chain: switching to another model on the same account will not help.
+    The class name is kept so existing callers stay stable; it is not SiliconFlow-only.
+    """
 
 
 class ArxivQueryError(RuntimeError):
@@ -417,6 +429,42 @@ def _thinking_switch(model: str) -> bool:
     return any(token in name for token in ("qwen", "deepseek", "glm", "kimi"))
 
 
+def llm_chat_url() -> str:
+    """OpenAI-compatible chat-completions URL.
+
+    ``LLM_BASE_URL`` wins over ``OPENAI_COMPAT_URL``. Both must be the full
+    ``.../chat/completions`` endpoint. Unset falls back to SiliconFlow.
+    """
+    configured = (os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_COMPAT_URL") or "").strip()
+    return configured or SILICONFLOW_URL
+
+
+def _is_openrouter(url: str) -> bool:
+    return "openrouter.ai" in url.lower()
+
+
+def _is_siliconflow(url: str) -> bool:
+    lowered = url.lower()
+    return "siliconflow.cn" in lowered or "siliconflow.com" in lowered
+
+
+def llm_api_key(url: Optional[str] = None) -> str:
+    """Key for ``url``. OpenRouter prefers ``OPENROUTER_API_KEY``; either key is accepted."""
+    target = llm_chat_url() if url is None else url
+    openrouter = (os.getenv("OPENROUTER_API_KEY") or "").strip()
+    silicon = (os.getenv("SILICONFLOW_API_KEY") or "").strip()
+    if _is_openrouter(target):
+        return openrouter or silicon
+    if _is_siliconflow(target):
+        return silicon or openrouter
+    return openrouter or silicon
+
+
+def llm_timeout() -> int:
+    raw = (os.getenv("LLM_TIMEOUT") or os.getenv("SILICONFLOW_TIMEOUT") or "120").strip()
+    return int(raw)
+
+
 def _message_text(message: dict[str, Any]) -> str:
     content = message.get("content")
     if isinstance(content, list):
@@ -464,7 +512,8 @@ def screening_messages(papers: list[dict[str, Any]], repair: bool = False) -> li
 
 
 def chat_completion(model: str, messages: list[dict[str, str]], max_tokens: int) -> str:
-    api_key = (os.getenv("SILICONFLOW_API_KEY") or "").strip()
+    url = llm_chat_url()
+    api_key = llm_api_key(url)
     if not api_key:
         raise SiliconFlowAuthError("missing API key")
     payload: dict[str, Any] = {
@@ -473,13 +522,14 @@ def chat_completion(model: str, messages: list[dict[str, str]], max_tokens: int)
         "max_tokens": max_tokens,
         "temperature": 0.1,
     }
-    if _thinking_switch(model):
+    # enable_thinking is a SiliconFlow extension. Other endpoints (OpenRouter) reject it.
+    if _is_siliconflow(url) and _thinking_switch(model):
         payload["enable_thinking"] = False
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    timeout = int(os.getenv("SILICONFLOW_TIMEOUT", "120"))
+    timeout = llm_timeout()
 
     def _post(body: dict[str, Any]) -> requests.Response:
-        return requests.post(SILICONFLOW_URL, headers=headers, json=body, timeout=timeout)
+        return requests.post(url, headers=headers, json=body, timeout=timeout)
 
     try:
         response = _post(payload)
@@ -492,7 +542,8 @@ def chat_completion(model: str, messages: list[dict[str, str]], max_tokens: int)
             response = _post(payload)
         except requests.RequestException as exc:
             raise RuntimeError(type(exc).__name__) from exc
-    if response.status_code in (401, 403):
+    # 402: balance or credits exhausted. Do not walk the rest of the model chain.
+    if response.status_code in (401, 402, 403):
         raise SiliconFlowAuthError(f"HTTP {response.status_code}")
     if response.status_code != 200:
         raise RuntimeError(f"HTTP {response.status_code}")
@@ -840,14 +891,14 @@ def main(settings: Optional[Settings] = None) -> int:
     for paper in to_screen[:12]:
         print(f"    · [{paper.get('keyword_score')}] {(paper.get('title') or '')[:80]}")
 
-    if to_screen and not (os.getenv("SILICONFLOW_API_KEY") or "").strip():
-        print("❌ 未设置 SILICONFLOW_API_KEY，无法筛选")
+    if to_screen and not llm_api_key():
+        print("❌ 未设置 OPENROUTER_API_KEY 或 SILICONFLOW_API_KEY，无法筛选")
         return 1
 
     try:
         screened = screen_papers(to_screen, settings) if to_screen else []
     except SiliconFlowAuthError:
-        print("❌ SiliconFlow API Key 无效或无权限，本次不推送、不推进窗口")
+        print("❌ LLM 鉴权失败或余额不足（401/402/403），本次不推送、不推进窗口")
         return 1
 
     ok = []
@@ -881,11 +932,11 @@ def main(settings: Optional[Settings] = None) -> int:
     qualifying = sum(1 for paper in selected if not paper.get("backup"))
     backups = len(selected) - qualifying
     print(f"入选 {len(selected)} 篇（达标 {qualifying}，备选 {backups}）")
-    if selected and not empty_note and (os.getenv("SILICONFLOW_API_KEY") or "").strip():
+    if selected and not empty_note and llm_api_key():
         try:
             translate_selected(selected, settings)
         except SiliconFlowAuthError:
-            print("⚠️ 翻译模型鉴权失败，卡片改附英文摘要")
+            print("⚠️ 翻译模型鉴权失败或余额不足，卡片改附英文摘要")
     for paper in selected:
         label = BACKUP_LABEL if paper.get("backup") else "达标"
         print(f"  - [{label}] {paper.get('score')} {paper.get('title', '')[:72]}")

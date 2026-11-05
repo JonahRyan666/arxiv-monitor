@@ -803,14 +803,27 @@ arxiv_monitor:
             "MAX_PAPERS_PER_DAY": "10",
             "MIN_PAPERS_PER_DAY": "3",
             "SILICONFLOW_SCREEN_MODEL": "Qwen/Qwen3.6-27B",
+            "SILICONFLOW_MODEL": "tencent/Hunyuan-MT-7B",
             "MAX_PAPERS_PER_DAY_IGNORED": "",
         })
         self.assertEqual(overridden.max_papers_per_day, 10)
         self.assertEqual(overridden.min_papers_per_day, 3)
         self.assertEqual(overridden.screen_model, "Qwen/Qwen3.6-27B")
-        blank = load_settings(path, environ={"MAX_PAPERS_PER_DAY": "  ", "MIN_PAPERS_PER_DAY": ""})
+        self.assertEqual(overridden.legacy_model, "tencent/Hunyuan-MT-7B")
+        preferred = load_settings(path, environ={
+            "LLM_SCREEN_MODEL": "google/gemma-4-31b-it:free",
+            "SILICONFLOW_SCREEN_MODEL": "Qwen/Qwen3.6-27B",
+            "LLM_FALLBACK_MODEL": "nvidia/nemotron-3.5-lightning:free",
+            "LLM_TRANSLATE_MODEL": "google/gemma-4-26b-a4b-it:free",
+            "SILICONFLOW_MODEL": "tencent/Hunyuan-MT-7B",
+        })
+        self.assertEqual(preferred.screen_model, "google/gemma-4-31b-it:free")
+        self.assertEqual(preferred.fallback_model, "nvidia/nemotron-3.5-lightning:free")
+        self.assertEqual(preferred.legacy_model, "google/gemma-4-26b-a4b-it:free")
+        blank = load_settings(path, environ={"MAX_PAPERS_PER_DAY": "  ", "MIN_PAPERS_PER_DAY": "", "LLM_SCREEN_MODEL": " "})
         self.assertEqual(blank.max_papers_per_day, 4)
         self.assertEqual(blank.min_papers_per_day, 2)
+        self.assertEqual(blank.screen_model, "example/screen")
 
     def test_repo_config_defaults(self):
         settings = load_settings(environ={})
@@ -821,10 +834,14 @@ arxiv_monitor:
         self.assertEqual(settings.max_lookback_days, 6)
         self.assertIn("antiferromagnet*", settings.secondary_keywords)
         self.assertIn("photoanode", settings.hard_negative_keywords)
-        self.assertEqual(settings.screen_model, "Qwen/Qwen3.6-27B")
-        self.assertEqual(settings.fallback_model, "Qwen/Qwen3.5-9B")
-        self.assertEqual(settings.legacy_model, "tencent/Hunyuan-MT-7B")
-        self.assertEqual(settings.model_chain()[0], "Qwen/Qwen3.6-27B")
+        self.assertEqual(settings.screen_model, "google/gemma-4-31b-it:free")
+        self.assertEqual(settings.fallback_model, "nvidia/nemotron-3.5-lightning:free")
+        self.assertEqual(settings.legacy_model, "google/gemma-4-26b-a4b-it:free")
+        self.assertEqual(settings.model_chain()[0], "google/gemma-4-31b-it:free")
+        self.assertEqual(
+            settings.translation_chain(),
+            ["google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-lightning:free"],
+        )
 
     def test_pending_retries_then_drops(self):
         failed = paper(arxiv_id="2401.00001", doi=None)
@@ -849,7 +866,13 @@ arxiv_monitor:
             "DRY_RUN",
             "FEISHU_WEBHOOK_URL",
             "FEISHU_SECRET",
+            "OPENROUTER_API_KEY",
             "SILICONFLOW_API_KEY",
+            "LLM_BASE_URL",
+            "https://openrouter.ai/api/v1/chat/completions",
+            "LLM_SCREEN_MODEL",
+            "LLM_FALLBACK_MODEL",
+            "LLM_TRANSLATE_MODEL",
             "RESULTS_WEBHOOK_URL",
             "RESULTS_WEBHOOK_SECRET",
             "digest.json",
@@ -936,10 +959,14 @@ class ScreeningAndRunTests(unittest.TestCase):
         monitor.ARXIV_QUERY_DELAY = 0
         self._old_env = {
             key: os.environ.get(key)
-            for key in ("SILICONFLOW_API_KEY", "FEISHU_WEBHOOK_URL", "FEISHU_SECRET",
-                        "RESULTS_WEBHOOK_URL", "RESULTS_WEBHOOK_SECRET")
+            for key in ("SILICONFLOW_API_KEY", "OPENROUTER_API_KEY", "FEISHU_WEBHOOK_URL",
+                        "FEISHU_SECRET", "RESULTS_WEBHOOK_URL", "RESULTS_WEBHOOK_SECRET",
+                        "LLM_BASE_URL", "OPENAI_COMPAT_URL", "LLM_TIMEOUT", "SILICONFLOW_TIMEOUT")
         }
         os.environ["SILICONFLOW_API_KEY"] = "test-key"
+        os.environ.pop("OPENROUTER_API_KEY", None)
+        os.environ.pop("LLM_BASE_URL", None)
+        os.environ.pop("OPENAI_COMPAT_URL", None)
         os.environ["FEISHU_WEBHOOK_URL"] = "https://example.invalid/hook"
         os.environ["FEISHU_SECRET"] = "test-sign-secret"
         os.environ.pop("RESULTS_WEBHOOK_URL", None)
@@ -1002,6 +1029,52 @@ class ScreeningAndRunTests(unittest.TestCase):
         with self.assertRaises(monitor.SiliconFlowAuthError):
             monitor.screen_papers([self._candidate()], settings)
         self.assertEqual(post.call_count, 1)
+
+    @patch.object(monitor.requests, "post")
+    def test_payment_required_does_not_try_another_model(self, post):
+        settings = self._settings()
+        settings.screen_model = "google/gemma-4-31b-it:free"
+        settings.fallback_model = "nvidia/nemotron-3.5-lightning:free"
+        settings.legacy_model = "google/gemma-4-26b-a4b-it:free"
+        settings.screen_retries = 2
+        post.return_value = Mock(status_code=402, text="insufficient balance")
+        with self.assertRaises(monitor.SiliconFlowAuthError):
+            monitor.screen_papers([self._candidate()], settings)
+        self.assertEqual(post.call_count, 1)
+        self.assertEqual(post.call_args.kwargs["json"]["model"], "google/gemma-4-31b-it:free")
+
+    @patch.object(monitor.requests, "post")
+    def test_openrouter_prefers_its_key_and_skips_thinking_flag(self, post):
+        os.environ["LLM_BASE_URL"] = "https://openrouter.ai/api/v1/chat/completions"
+        os.environ["OPENROUTER_API_KEY"] = "or-key"
+        os.environ["SILICONFLOW_API_KEY"] = "sf-key"
+        post.return_value = Mock(status_code=200, json=lambda: {"choices": [{"message": {"content": "[]"}}]})
+        monitor.chat_completion("Qwen/Qwen3.6-27B", [{"role": "user", "content": "hi"}], 16)
+        self.assertEqual(post.call_args.args[0], "https://openrouter.ai/api/v1/chat/completions")
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer or-key")
+        self.assertNotIn("enable_thinking", post.call_args.kwargs["json"])
+        self.assertEqual(post.call_args.kwargs["json"]["model"], "Qwen/Qwen3.6-27B")
+
+    @patch.object(monitor.requests, "post")
+    def test_siliconflow_keeps_thinking_flag_and_its_own_key(self, post):
+        os.environ["OPENAI_COMPAT_URL"] = monitor.SILICONFLOW_URL
+        os.environ["OPENROUTER_API_KEY"] = "or-key"
+        os.environ["SILICONFLOW_API_KEY"] = "sf-key"
+        post.return_value = Mock(status_code=200, json=lambda: {"choices": [{"message": {"content": "ok"}}]})
+        monitor.chat_completion("Qwen/Qwen3.6-27B", [{"role": "user", "content": "hi"}], 16)
+        self.assertEqual(post.call_args.args[0], monitor.SILICONFLOW_URL)
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer sf-key")
+        self.assertFalse(post.call_args.kwargs["json"]["enable_thinking"])
+
+    def test_openrouter_key_alone_is_enough_when_base_url_matches(self):
+        os.environ.pop("SILICONFLOW_API_KEY", None)
+        os.environ["OPENROUTER_API_KEY"] = "or-only"
+        os.environ["LLM_BASE_URL"] = monitor.OPENROUTER_URL
+        self.assertEqual(monitor.llm_api_key(), "or-only")
+        os.environ.pop("LLM_BASE_URL", None)
+        os.environ["OPENAI_COMPAT_URL"] = monitor.OPENROUTER_URL
+        self.assertEqual(monitor.llm_chat_url(), monitor.OPENROUTER_URL)
+        self.assertEqual(monitor.llm_api_key(), "or-only")
 
     def _fill_translation(self, papers, _settings):
         formula = r"$\mathbf{C}=(1,1,1)$"
