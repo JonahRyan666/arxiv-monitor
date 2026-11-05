@@ -11,8 +11,8 @@
 1. 从 `state` 分支取出 `digest_state.json`（已发送的 arXiv ID / DOI、题名、上次成功时间，以及近 12 天的模型评分缓存 `screened`）。
 2. 每天固定检索最近 6 天提交的论文（`max_lookback_days`）。arXiv API 只在论文**公布之后**才能按提交时间查到，而公布通常比提交晚 1–3.5 天；以前“从上次成功时间开始”的窗口因此几乎查不到新文（手动重跑时只剩 JPSJ 的 2 篇）。已经发过的论文在截断之前就先去掉，所以不会重复。
 3. 关键词预筛并打分：核心主题（自旋液体、阻挫、kagome、烧绿石、多铁、磁电……）权重最高；一般块体磁性（反铁磁、自旋链、磁振子、μSR、中子……）次之；铁电 / 极化类只算弱信号，和磁性同时出现时加分；有样品和测量的证据（单晶、flux、CVT、比热、磁化率……）加分。光催化、光电极、电池、器件 / 忆阻器、薄膜应用、纯铁电无磁性、纯 DFT / 理论会被扣分，明显的应用类（光催化、电池等）没有核心主题命中时直接丢掉。
-4. 按预筛分数取前若干篇（默认 36 篇，`screen_pool`）交给 SiliconFlow 打 0–10 分。仍然只看摘要，不读全文，按批请求，不发作者列表以节省 token。之前几天已经评过分的论文直接复用缓存，不再送模型，也不会挤掉新论文。模型判断主题是否核心、是不是实验、样品形态、生长方法、测了什么、居里-外斯温度、有序温度、阻挫指数 f、是否靠近室温，并写一句中性的物理亮点；离题论文标 `off_topic`。这一步不翻译。
-5. 选出当天要发的 5–10 篇之后，再用翻译模型（默认 `tencent/Hunyuan-MT-7B`，失败则用 `Qwen/Qwen3.5-9B`）把**题名和整段摘要**译成中文。未入选的论文不翻译。公式如 `$\mathbf{C}=(1,1,1)$` 按原文保留。
+4. 按预筛分数取前若干篇（默认 36 篇，`screen_pool`）交给 OpenRouter 免费模型打 0–10 分。仍然只看摘要，不读全文，按批请求，不发作者列表以节省 token。之前几天已经评过分的论文直接复用缓存，不再送模型，也不会挤掉新论文。模型判断主题是否核心、是不是实验、样品形态、生长方法、测了什么、居里-外斯温度、有序温度、阻挫指数 f、是否靠近室温，并写一句中性的物理亮点；离题论文标 `off_topic`。这一步不翻译。
+5. 选出当天要发的 5–10 篇之后，再用翻译模型（默认 `google/gemma-4-26b-a4b-it:free`，失败则用 `nvidia/nemotron-3.5-lightning:free`）把**题名和整段摘要**译成中文。未入选的论文不翻译。公式如 `$\mathbf{C}=(1,1,1)$` 按原文保留。
 6. 发飞书卡片，并把当天的 `digest.json` 留成 Actions artifact。每篇包含编号、达标或备选和分数、英文题名链接、【中文题名】、短作者、一行样品/生长/温度/来源、【摘要翻译】、【亮点/筛选理由】。卡片超过约 30KB 时拆成多条：先一条总览，然后每条最多 5 篇，编号连续，讨论提示只在最后一条。
 7. 发送成功后，把新的去重状态提交回 `state` 分支。这个分支不要合并进主分支。
 
@@ -52,35 +52,46 @@
 | `max_papers_per_day` | 达标论文每天最多发几篇 | 10 |
 | `min_papers_per_day` | 不足时用备选补到几篇 | 5 |
 | `screen_pool` | 每天最多送给模型的新候选，其余可作未评分备选 | 36 |
-| `models.screen` | 筛选用的指令模型 | `Qwen/Qwen3.6-27B` |
-| `models.fallback` | 第一备用 | `Qwen/Qwen3.5-9B` |
-| `models.legacy` | 第二备用（原来的翻译模型） | `tencent/Hunyuan-MT-7B` |
+| `models.screen` | 筛选用的指令模型 | `google/gemma-4-31b-it:free` |
+| `models.fallback` | 筛选失败后的备用，也是翻译备用 | `nvidia/nemotron-3.5-lightning:free` |
+| `models.legacy` | 翻译模型（筛选链的最后一档） | `google/gemma-4-26b-a4b-it:free` |
 | `screen_batch_size` / `screen_retries` | 批量条数和 JSON 解析重试 | 4 / 2 |
+
+这三组模型 ID 在 2026-11-05 对照 OpenRouter 的 `https://openrouter.ai/api/v1/models` 确认存在，价格为 0，且 ID 以 `:free` 结尾。`google/gemma-3-27b-it:free` 不在免费列表里（付费 ID `google/gemma-3-27b-it` 还在，不要拿来当默认）。可选的更强推理模型 `nvidia/nemotron-3-ultra-550b-a55b:free` 也在免费列表里，但默认链没用它：它是推理模型，不支持 `response_format`，JSON 筛选更容易失败。
 
 对应的环境变量：
 
 - `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`
 - `ARXIV_CATEGORIES`（逗号分隔）、`ARXIV_MAX_LOOKBACK_DAYS`
-- `SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`
+- `LLM_BASE_URL`（完整的 chat completions 地址；别名 `OPENAI_COMPAT_URL`）。生产应设为 `https://openrouter.ai/api/v1/chat/completions`。两个都空时，脚本才回退到 SiliconFlow `https://api.siliconflow.cn/v1/chat/completions`。
+- `LLM_SCREEN_MODEL`、`LLM_FALLBACK_MODEL`、`LLM_TRANSLATE_MODEL`
+- 旧名字仍可用，且只在对应的 `LLM_*` 未设置时生效：`SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`（`SILICONFLOW_MODEL` 对应翻译模型）
 - `SCREEN_BATCH_SIZE`、`SCREEN_RETRIES`
+- `LLM_TIMEOUT`（秒；未设置时读 `SILICONFLOW_TIMEOUT`，再默认 120）
 - `DRY_RUN=1`
 
-在仓库的 Settings → Secrets and variables → Actions → Variables 里设置同名变量，工作流会把它传给脚本，并覆盖 `config.yaml`。
+在仓库的 Settings → Secrets and variables → Actions → Variables 里设置同名变量，工作流会把它传给脚本，并覆盖 `config.yaml`。变量留空等于没设置。工作流在 `LLM_BASE_URL` 变量为空时，自己填上 OpenRouter 的 chat completions 地址。
+
+无额度的 OpenRouter `:free` 账号大约 **20 次/分钟、50 次/天**。买过约 $10 额度后，每天上限升到约 1000 次。失败的请求也计入每日上限。默认一天筛选大约十几次调用，重试和换模型会很快吃掉 50 次，所以免费档要少改 `screen_retries`，也不要再加长模型链。
 
 ## 密钥
 
-沿用原来的三个，名字不要改：
+在 Settings → Secrets and variables → Actions → Secrets 里添加。日志不会打印这些值。
+
+必填：
 
 - `FEISHU_WEBHOOK_URL`
 - `FEISHU_SECRET`（飞书机器人签名；没签名的机器人可以留空）
+- `OPENROUTER_API_KEY`（在 [openrouter.ai/keys](https://openrouter.ai/keys) 创建。`LLM_BASE_URL` 指向 OpenRouter 时优先用这一把）
+
+可选备份。只有 `LLM_BASE_URL` 改回 SiliconFlow 时才会优先使用；OpenRouter 地址下，这把钥匙仅在 `OPENROUTER_API_KEY` 为空时才当作替补：
+
 - `SILICONFLOW_API_KEY`
 
 可选。两个都设置时，脚本会把当天的 digest JSON POST 出去，请求头是 `X-Signature: sha256=<对原始 body 做 HMAC-SHA256 的十六进制>`。缺任何一个就跳过，不报错：
 
 - `RESULTS_WEBHOOK_URL`
 - `RESULTS_WEBHOOK_SECRET`
-
-日志里不会打印这些值。
 
 ## state 分支
 
@@ -106,12 +117,12 @@ DRY_RUN=1 python arxiv_daily_report.py
 python -m unittest test_digest_logic.py test_jpsj_crossref.py
 ```
 
-本地演练同样需要 `SILICONFLOW_API_KEY` 才会真正打分。没有达标论文时，日志里会看到 `No qualifying papers today.`
+本地演练需要 `OPENROUTER_API_KEY`（或备用的 `SILICONFLOW_API_KEY`）才会真正打分。没有达标论文时，日志里会看到 `No qualifying papers today.`
 
 ## 你需要确认的一次性设置
 
 1. 仓库 Actions 允许这个工作流写内容。文件里已经写了 `permissions: contents: write`。如果组织把 `GITHUB_TOKEN` 锁成只读，要在仓库 Settings → Actions → General 里改成 Read and write，或者允许工作流自己声明写权限。
-2. 三个原有密钥还在：`FEISHU_WEBHOOK_URL`、`FEISHU_SECRET`、`SILICONFLOW_API_KEY`。
-3. 想改每天篇数或模型时，改 `config.yaml`，或者设置仓库变量 `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`、`SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`。如果之前把 `MIN_PAPERS_PER_DAY` 设成了 3，请改成 5 或删掉，否则会盖过配置文件。
+2. Secrets：`FEISHU_WEBHOOK_URL`、`FEISHU_SECRET`、`OPENROUTER_API_KEY`。`SILICONFLOW_API_KEY` 可以留着当备份，也可以删掉。余额用尽时接口返回 HTTP 402，脚本会停掉整条模型链，不再换别的付费模型重试。
+3. 想改每天篇数或模型时，改 `config.yaml`，或者设置仓库变量 `MAX_PAPERS_PER_DAY`、`MIN_PAPERS_PER_DAY`、`LLM_BASE_URL`、`LLM_SCREEN_MODEL`、`LLM_FALLBACK_MODEL`、`LLM_TRANSLATE_MODEL`。如果以前设过 `SILICONFLOW_SCREEN_MODEL`、`SILICONFLOW_FALLBACK_MODEL`、`SILICONFLOW_MODEL`，而对应的 `LLM_*` 变量是空的，旧变量仍会盖过免费默认模型，请改成 `:free` ID 或删掉。如果之前把 `MIN_PAPERS_PER_DAY` 设成了 3，请改成 5 或删掉，否则会盖过配置文件。
 4. 只有在你另外要收 JSON 时，才添加 `RESULTS_WEBHOOK_URL` 和 `RESULTS_WEBHOOK_SECRET`。
 5. `state` 分支留给机器人，不要合并，也不要要求评审才能推送。

@@ -222,7 +222,11 @@ arxiv_monitor:
   max_authors_display: 3
 
   models:
-    # 筛选用的指令模型。失败时依次尝试 fallback、legacy。
-    screen: Qwen/Qwen3.6-27B
-    fallback: Qwen/Qwen3.5-9B
-    legacy: tencent/Hunyuan-MT-7B
+    # OpenRouter 免费聊天模型（ID 以 :free 结尾）。2026-11-05 对照
+    # https://openrouter.ai/api/v1/models 确认存在。google/gemma-3-27b-it:free 不在免费列表。
+    # 筛选顺序：screen → fallback → legacy。翻译顺序：legacy → fallback。
+    # 无额度账号的 :free 大约 20 次/分钟、50 次/天（失败也计入）。生产环境应把
+    # LLM_BASE_URL 设为 https://openrouter.ai/api/v1/chat/completions 。
+    screen: google/gemma-4-31b-it:free
+    fallback: nvidia/nemotron-3.5-lightning:free
+    legacy: google/gemma-4-26b-a4b-it:free
