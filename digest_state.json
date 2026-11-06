@@ -2,6 +2,7 @@
   "sent_ids": [
     "10.1039/d6tc01028h",
     "10.1088/1674-1056/aeba69",
+    "10.1103/xpcs-4726",
     "10.7566/jpsj.95.113702",
     "10.7566/jpsj.95.114703",
     "10.7566/jpsj.95.114705",
@@ -52,7 +53,12 @@
     "2611.06326",
     "2611.06526",
     "2611.06676",
-    "2611.06811"
+    "2611.06811",
+    "2611.07131",
+    "2611.07337",
+    "2611.07400",
+    "2611.07597",
+    "2611.07807"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -105,9 +111,105 @@
     "DefectSkills: Guiding AI agents through first-principles calculations for point defects in semiconductors and insulators",
     "Evolutionary Design of Interpretable Spatial Descriptors for Structure-Property Relationship Discovery",
     "Hydrogen-induced modification of the local charge density in MnSb$_2$Te$_4$",
-    "Observing oscillations using the non-magnetic and magnetic spin Hall effect in a non-collinear antiferromagnet"
+    "Observing oscillations using the non-magnetic and magnetic spin Hall effect in a non-collinear antiferromagnet",
+    "Negligible Kitaev interaction in the van der Waals antiferromagnet NiBr$_2$ revealed by neutron spectroscopy",
+    "Nonlinear Interaction and Topological Selection Rules in two Skyrmion Merging: Emergence of Skyrmionium Textures",
+    "Frustration-freeness is decidable but unprovable",
+    "Exact magnetic ground states and competing interlayer exchanges in layered kagome magnets",
+    "Extensions of the Haldane gap proof: higher dimensions, near degeneracy, fermions and tensor-network states"
   ],
-  "pending": [],
+  "pending": [
+    {
+      "arxiv_id": "2611.08385",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07893",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08055",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": null,
+      "doi": "10.7566/jpsj.95.125001",
+      "source": "jpsj",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08349",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08033",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07422",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08447",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07960",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07017",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08065",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07021",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07045",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07435",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08037",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    }
+  ],
   "screened": {
     "10.1002/adfm.79184": {
       "at": "2026-10-31T06:30:24.021701+00:00",
@@ -3299,5 +3401,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-05T18:16:19.857268+00:00"
+  "last_successful_run": "2026-11-06T07:31:16.473104+00:00"
 }
