@@ -7,6 +7,7 @@
     "10.7566/jpsj.95.114703",
     "10.7566/jpsj.95.114705",
     "10.7566/jpsj.95.114706",
+    "10.7566/jpsj.95.125001",
     "2610.33556",
     "2610.34230",
     "2610.34312",
@@ -58,7 +59,12 @@
     "2611.07337",
     "2611.07400",
     "2611.07597",
-    "2611.07807"
+    "2611.07807",
+    "2611.07893",
+    "2611.08033",
+    "2611.08055",
+    "2611.08349",
+    "2611.08385"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -116,98 +122,68 @@
     "Nonlinear Interaction and Topological Selection Rules in two Skyrmion Merging: Emergence of Skyrmionium Textures",
     "Frustration-freeness is decidable but unprovable",
     "Exact magnetic ground states and competing interlayer exchanges in layered kagome magnets",
-    "Extensions of the Haldane gap proof: higher dimensions, near degeneracy, fermions and tensor-network states"
+    "Extensions of the Haldane gap proof: higher dimensions, near degeneracy, fermions and tensor-network states",
+    "Anisotropy lifts topological protection of transport in pumped spin chains",
+    "Continuum Photonic Axion Insulators",
+    "Ferroelectric control of magnetic coupling in a Cr dimer adsorbed on $α$-In$_2$Se$_3$",
+    "Low-Temperature Limit of Spontaneous Polarization in BaTiO 3 Determined Using a (111)-Oriented Single Crystal",
+    "Multimagnon bound states in the polarized phase of anisotropic antiferromagnets",
+    "Galois conjugation, droplet growth, and the differential transcendence of the Ising model in nonzero field"
   ],
   "pending": [
-    {
-      "arxiv_id": "2611.08385",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.07893",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.08055",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": null,
-      "doi": "10.7566/jpsj.95.125001",
-      "source": "jpsj",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.08349",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.08033",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
     {
       "arxiv_id": "2611.07422",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.08447",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.07960",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.07017",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.08065",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.07021",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.07045",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.07435",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.08037",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     }
   ],
   "screened": {
@@ -3401,5 +3377,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-06T07:31:16.473104+00:00"
+  "last_successful_run": "2026-11-07T06:44:25.736238+00:00"
 }
