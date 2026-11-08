@@ -55,16 +55,22 @@
     "2611.06526",
     "2611.06676",
     "2611.06811",
+    "2611.07017",
+    "2611.07021",
     "2611.07131",
     "2611.07337",
     "2611.07400",
+    "2611.07422",
     "2611.07597",
     "2611.07807",
     "2611.07893",
+    "2611.07960",
     "2611.08033",
     "2611.08055",
+    "2611.08065",
     "2611.08349",
-    "2611.08385"
+    "2611.08385",
+    "2611.08447"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -128,64 +134,15 @@
     "Ferroelectric control of magnetic coupling in a Cr dimer adsorbed on $α$-In$_2$Se$_3$",
     "Low-Temperature Limit of Spontaneous Polarization in BaTiO 3 Determined Using a (111)-Oriented Single Crystal",
     "Multimagnon bound states in the polarized phase of anisotropic antiferromagnets",
-    "Galois conjugation, droplet growth, and the differential transcendence of the Ising model in nonzero field"
+    "Galois conjugation, droplet growth, and the differential transcendence of the Ising model in nonzero field",
+    "Cross-Family Mode Coupling and Localization Reversal in Phononic Crystal Defect Dimers",
+    "Dynamical effects induced by synthetic SU(1,1) gauge fields",
+    "Monopoles, Scattering and Generalized Symmetries on a Quantum Computer",
+    "Threshold-Free Symmetry-Enriched Topological Quantum Memory",
+    "Key role of orbital exchange in CoO magnetism",
+    "Single-shot ground-state preparation via strongly coupled baths"
   ],
-  "pending": [
-    {
-      "arxiv_id": "2611.07422",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.08447",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.07960",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.07017",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.08065",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.07021",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.07045",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.07435",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.08037",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    }
-  ],
+  "pending": [],
   "screened": {
     "10.1002/adfm.79184": {
       "at": "2026-10-31T06:30:24.021701+00:00",
@@ -3377,5 +3334,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-07T06:44:25.736238+00:00"
+  "last_successful_run": "2026-11-08T06:50:47.330847+00:00"
 }
