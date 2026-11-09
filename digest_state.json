@@ -70,7 +70,13 @@
     "2611.08065",
     "2611.08349",
     "2611.08385",
-    "2611.08447"
+    "2611.08447",
+    "2611.08728",
+    "2611.08761",
+    "2611.09202",
+    "2611.09494",
+    "2611.09509",
+    "2611.09881"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -140,9 +146,88 @@
     "Monopoles, Scattering and Generalized Symmetries on a Quantum Computer",
     "Threshold-Free Symmetry-Enriched Topological Quantum Memory",
     "Key role of orbital exchange in CoO magnetism",
-    "Single-shot ground-state preparation via strongly coupled baths"
+    "Single-shot ground-state preparation via strongly coupled baths",
+    "Unraveling square and kagome lattice frustrated magnetism by scalable tensor networks",
+    "Ion Redistribution and Lattice-Distortion-Modulated d-Electron Correlation in Layered Multiferroic ABP$_2$S$_6$ Probed by X-ray Photoelectron Spectroscopy",
+    "Pressure-induced symmetry breaking and polarity in the van der Waals magnet CrSBr",
+    "High-Volume Wurtzite MnSe in MnSe/CdSe Superlattices: Structure, Magnetism and Optical Response",
+    "Interplay of Ni Order and Local Moments in Intercalated NixNbS2",
+    "Bichromatic light-induced electronic torques on the Néel vector in Rashba magnetic multipoles from $p$-wave magnets to $i$-wave altermagnets"
   ],
-  "pending": [],
+  "pending": [
+    {
+      "arxiv_id": "2611.08871",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08894",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.09469",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07564",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08582",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08873",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07045",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.09814",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.07435",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08037",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.08874",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.09025",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    }
+  ],
   "screened": {
     "10.1002/adfm.79184": {
       "at": "2026-10-31T06:30:24.021701+00:00",
@@ -3334,5 +3419,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-08T06:50:47.330847+00:00"
+  "last_successful_run": "2026-11-09T07:30:18.882988+00:00"
 }
