@@ -76,7 +76,12 @@
     "2611.09202",
     "2611.09494",
     "2611.09509",
-    "2611.09881"
+    "2611.09881",
+    "2611.10173",
+    "2611.10225",
+    "2611.10946",
+    "2611.11772",
+    "2611.12460"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -152,14 +157,19 @@
     "Pressure-induced symmetry breaking and polarity in the van der Waals magnet CrSBr",
     "High-Volume Wurtzite MnSe in MnSe/CdSe Superlattices: Structure, Magnetism and Optical Response",
     "Interplay of Ni Order and Local Moments in Intercalated NixNbS2",
-    "Bichromatic light-induced electronic torques on the Néel vector in Rashba magnetic multipoles from $p$-wave magnets to $i$-wave altermagnets"
+    "Bichromatic light-induced electronic torques on the Néel vector in Rashba magnetic multipoles from $p$-wave magnets to $i$-wave altermagnets",
+    "Temperature-Driven Evolution of Magnetization Dynamics in Cobalt-Doped Fe$_5$GeTe$_2$",
+    "Revealing laser-induced modification of weak ferromagnetism through a spin-reorientation phase transition in iron borate Fe$_3$BO$_6$",
+    "Imaging spin entanglement with a scanning tunneling microscope",
+    "Frustrated Magnetism from Dimerized $S = 1/2$ Co$^{2+}$ in Rose-Phase Na$_2$CoP$_2$O$_7$",
+    "Hidden memory above the Neel temperature programs antiferromagnetic order in Cr2O3"
   ],
   "pending": [
     {
       "arxiv_id": "2611.08871",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.08894",
@@ -195,34 +205,100 @@
       "arxiv_id": "2611.07045",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.09814",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.07435",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.08037",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.08874",
       "doi": null,
       "source": "arxiv",
-      "attempts": 1
+      "attempts": 2
     },
     {
       "arxiv_id": "2611.09025",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 2
+    },
+    {
+      "arxiv_id": "2611.10513",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.11353",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.10512",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": null,
+      "doi": "10.7566/jpsj.95.124003",
+      "source": "jpsj",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.12303",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.10368",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.11267",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.12224",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.10473",
+      "doi": null,
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.11781",
+      "doi": "10.1103/jlhg-yy14",
+      "source": "arxiv",
+      "attempts": 1
+    },
+    {
+      "arxiv_id": "2611.12598",
       "doi": null,
       "source": "arxiv",
       "attempts": 1
@@ -3417,7 +3493,287 @@
         "score": 0.0,
         "highlight_zh": "纯理论工作，研究S=1罗盘模型的精确基态和相变，无实验样品和测量。"
       }
+    },
+    "2611.07564": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "基于 InAs 掺杂层和锗超表面的非互易热发射实验，属于光电/器件方向。"
+      }
+    },
+    "2611.08582": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "纯理论工作，讨论共形缺陷谱的解析界限。"
+      }
+    },
+    "2611.08873": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 2.0,
+        "highlight_zh": "理论探讨滑动磁螺旋中的旋转多普勒效应和螺旋磁振子频率梳。"
+      }
+    },
+    "2611.08894": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "开发了一种在实空间计算固体纵向磁化率的数值框架，并应用于 Fe, Cr, FeSe 等材料。"
+      }
+    },
+    "2611.09469": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 2.0,
+        "highlight_zh": "研究扭曲铜氧化物双层的反铁磁与拓扑超导共存，基于 t-J 模型的理论研究。"
+      }
+    },
+    "2611.10225": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "FMR",
+          "magnetometry"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": true,
+        "meets_measured_data": true,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 5.0,
+        "highlight_zh": "研究钴掺杂Fe5GeTe2单晶的宽频铁磁共振，发现200K附近存在动力学交叉行为。"
+      }
+    },
+    "2611.10946": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [
+          "IETS"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "利用扫描隧道显微镜的非弹性电子隧道谱 (IETS) 成像纳米石墨烯自旋链中的自旋纠缠。"
+      }
+    },
+    "2611.11225": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "理论研究掺杂SrTiO3中电子与横光学声子的耦合及热流机制。"
+      }
+    },
+    "2611.11935": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "利用 AI 框架 EntNet 在自旋哈密顿量中寻找纠缠见证者，纯数值计算。"
+      }
+    },
+    "2611.12264": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "基于第一性原理计算研究 HfO2 铁电相中 90 度极化旋转的声子机制。"
+      }
+    },
+    "2611.12460": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "magneto-optical pump-probe"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 5.0,
+        "highlight_zh": "利用超快磁光泵浦-探测技术研究 Fe3BO6 中激光诱导的弱铁磁性修改和自旋重取向相变。"
+      }
+    },
+    "2611.12566": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "通过量子蒙特卡洛模拟评估磁能级和转变温度的预测精度，无实验样品测量。"
+      }
+    },
+    "2611.12736": {
+      "at": "2026-11-10T07:55:19.576195+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "该工作为开发一种包含零点运动和非简谐性的结构弛豫算法 WARP，属于纯计算/方法学研究。"
+      }
     }
   },
-  "last_successful_run": "2026-11-09T07:30:18.882988+00:00"
+  "last_successful_run": "2026-11-10T07:55:19.576195+00:00"
 }
