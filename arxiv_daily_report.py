@@ -4,12 +4,15 @@
 
 Fetches arXiv (cond-mat.str-el / cond-mat.mtrl-sci by default) and JPSJ via
 Crossref, drops off-topic and obvious theory with a keyword prefilter, then
-asks an OpenAI-compatible chat model to score the remaining papers. Production
-should set LLM_BASE_URL to https://openrouter.ai/api/v1/chat/completions and
-OPENROUTER_API_KEY. If LLM_BASE_URL is unset, the client falls back to
-SiliconFlow. One Feishu interactive card is sent per run. Sent ids and the
-last success time are stored in digest_state.json so a later step can commit
-them onto the ``state`` branch.
+asks an OpenAI-compatible chat model to score the remaining papers. The
+default endpoint is Gemini's OpenAI-compatible API
+(https://generativelanguage.googleapis.com/v1beta/openai/chat/completions)
+with GEMINI_API_KEY. LLM_BASE_URL / OPENAI_COMPAT_URL override it. If that
+URL is Gemini and GEMINI_API_KEY is missing but OPENROUTER_API_KEY is set,
+the client logs a line and uses OpenRouter. SiliconFlow remains available
+when LLM_BASE_URL points there. One Feishu interactive card is sent per run.
+Sent ids and the last success time are stored in digest_state.json so a
+later step can commit them onto the ``state`` branch.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -54,12 +58,25 @@ from digest_lib import (
 )
 
 JPSJ_ISSNS = ("0031-9015", "1347-4073")
-# Full chat-completions endpoint, not the /v1 prefix. Production should set
-# LLM_BASE_URL (or OPENAI_COMPAT_URL) to OPENROUTER_URL. This SiliconFlow URL
-# is only the fallback when both env vars are unset.
+# Full chat-completions endpoints, not a /v1 prefix. Unset LLM_BASE_URL uses
+# Gemini. OpenRouter is the optional backup when the Gemini key is missing.
+# SiliconFlow is used only when the configured URL points there.
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Previous OpenRouter :free setup, used only by the backup path.
+OPENROUTER_SCREEN_MODEL = "google/gemma-4-31b-it:free"
+OPENROUTER_FALLBACK_MODEL = "nvidia/nemotron-3.5-lightning:free"
+OPENROUTER_TRANSLATE_MODEL = "google/gemma-4-26b-a4b-it:free"
 ARXIV_API = "https://export.arxiv.org/api/query"
+# Gemini's free tier is about 15 requests/minute. Space calls so a normal
+# digest stays under that. Override with LLM_MIN_INTERVAL (seconds).
+DEFAULT_LLM_MIN_INTERVAL = 4.0
+# One wait after HTTP 429/402 when the response has no Retry-After.
+LLM_QUOTA_BACKOFF = 8.0
+# Cap a huge Retry-After so one header cannot stall the whole run.
+LLM_RETRY_AFTER_CAP = 60.0
+QUOTA_STATUSES = (429, 402)
 
 CROSSREF_TIMEOUT = int(os.getenv("CROSSREF_TIMEOUT", "30"))
 CROSSREF_RETRIES = int(os.getenv("CROSSREF_RETRIES", "2"))
@@ -74,12 +91,23 @@ LAST_ARXIV_QUERY_TS = 0.0
 
 
 class SiliconFlowAuthError(RuntimeError):
-    """Auth, permission, or billing failure. Do not try another model or advance the window.
+    """Auth or permission failure (HTTP 401/403). Do not try another model.
 
-    Covers HTTP 401/403 and HTTP 402 (empty balance). A 402 is terminal for the
-    whole chain: switching to another model on the same account will not help.
-    The class name is kept so existing callers stay stable; it is not SiliconFlow-only.
+    The class name is historical; it is not SiliconFlow-only. HTTP 402 and 429
+    are quota errors (see LlmQuotaError): one paced retry, then the next model.
     """
+
+
+class LlmQuotaError(RuntimeError):
+    """HTTP 429 or 402 after the single allowed retry."""
+
+    def __init__(self, status: int):
+        super().__init__(f"HTTP {status}")
+        self.status = int(status)
+
+
+class LlmCircuitOpen(RuntimeError):
+    """Further LLM calls are skipped for the rest of this run."""
 
 
 class ArxivQueryError(RuntimeError):
@@ -429,35 +457,215 @@ def _thinking_switch(model: str) -> bool:
     return any(token in name for token in ("qwen", "deepseek", "glm", "kimi"))
 
 
+_llm_circuit_open = False
+_last_llm_monotonic = 0.0
+_llm_notices: set[str] = set()
+
+
+def reset_llm_runtime() -> None:
+    """Clear pacing, the quota circuit, and one-shot provider logs."""
+    global _llm_circuit_open, _last_llm_monotonic
+    _llm_circuit_open = False
+    _last_llm_monotonic = 0.0
+    _llm_notices.clear()
+
+
+def llm_circuit_open() -> bool:
+    return _llm_circuit_open
+
+
+def _notice(key: str, message: str) -> None:
+    if key in _llm_notices:
+        return
+    _llm_notices.add(key)
+    print(message)
+
+
+def _trip_llm_circuit(where: str) -> None:
+    global _llm_circuit_open
+    if _llm_circuit_open:
+        return
+    _llm_circuit_open = True
+    print(
+        f"⛔ {where}全部模型都返回 HTTP 429/402，熔断后续 LLM 请求。"
+        "其余论文不再打分、不再翻译，按关键词预筛作为备选。"
+    )
+
+
+def _is_openrouter(url: str) -> bool:
+    return "openrouter.ai" in (url or "").lower()
+
+
+def _is_siliconflow(url: str) -> bool:
+    lowered = (url or "").lower()
+    return "siliconflow.cn" in lowered or "siliconflow.com" in lowered
+
+
+def _is_gemini(url: str) -> bool:
+    return "googleapis.com" in (url or "").lower()
+
+
+def _is_gemini_model(name: str) -> bool:
+    return "gemini" in (name or "").lower()
+
+
+def configured_llm_url() -> str:
+    """URL from the environment, or the Gemini default. Does not apply backups."""
+    configured = (os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_COMPAT_URL") or "").strip()
+    return configured or GEMINI_URL
+
+
+def _openrouter_fallback_active(url: str) -> bool:
+    if not _is_gemini(url):
+        return False
+    if (os.getenv("GEMINI_API_KEY") or "").strip():
+        return False
+    return bool((os.getenv("OPENROUTER_API_KEY") or "").strip())
+
+
 def llm_chat_url() -> str:
     """OpenAI-compatible chat-completions URL.
 
     ``LLM_BASE_URL`` wins over ``OPENAI_COMPAT_URL``. Both must be the full
-    ``.../chat/completions`` endpoint. Unset falls back to SiliconFlow.
+    ``.../chat/completions`` endpoint. Unset uses Gemini. If that URL is a
+    Gemini/googleapis endpoint and ``GEMINI_API_KEY`` is missing but
+    ``OPENROUTER_API_KEY`` is set, use OpenRouter and log it once.
     """
-    configured = (os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_COMPAT_URL") or "").strip()
-    return configured or SILICONFLOW_URL
-
-
-def _is_openrouter(url: str) -> bool:
-    return "openrouter.ai" in url.lower()
-
-
-def _is_siliconflow(url: str) -> bool:
-    lowered = url.lower()
-    return "siliconflow.cn" in lowered or "siliconflow.com" in lowered
+    url = configured_llm_url()
+    if _openrouter_fallback_active(url):
+        _notice(
+            "openrouter-fallback",
+            "⚠️ 未设置 GEMINI_API_KEY，改用 OpenRouter 备份（OPENROUTER_API_KEY）。"
+            f"地址 {OPENROUTER_URL}",
+        )
+        return OPENROUTER_URL
+    return url
 
 
 def llm_api_key(url: Optional[str] = None) -> str:
-    """Key for ``url``. OpenRouter prefers ``OPENROUTER_API_KEY``; either key is accepted."""
+    """Key for ``url``.
+
+    A Gemini/googleapis endpoint uses ``GEMINI_API_KEY`` only. OpenRouter
+    prefers ``OPENROUTER_API_KEY``; SiliconFlow prefers ``SILICONFLOW_API_KEY``.
+    Either of those two is accepted on the other host. When ``url`` is omitted,
+    the effective URL (including the OpenRouter backup) is used.
+    """
     target = llm_chat_url() if url is None else url
+    gemini = (os.getenv("GEMINI_API_KEY") or "").strip()
     openrouter = (os.getenv("OPENROUTER_API_KEY") or "").strip()
     silicon = (os.getenv("SILICONFLOW_API_KEY") or "").strip()
+    if _is_gemini(target):
+        return gemini
     if _is_openrouter(target):
         return openrouter or silicon
     if _is_siliconflow(target):
         return silicon or openrouter
     return openrouter or silicon
+
+
+def _swap_gemini_models_for_openrouter(settings: Settings) -> bool:
+    changed = False
+    if _is_gemini_model(settings.screen_model):
+        settings.screen_model = OPENROUTER_SCREEN_MODEL
+        changed = True
+    if _is_gemini_model(settings.fallback_model):
+        settings.fallback_model = OPENROUTER_FALLBACK_MODEL
+        changed = True
+    if _is_gemini_model(settings.legacy_model):
+        settings.legacy_model = OPENROUTER_TRANSLATE_MODEL
+        changed = True
+    return changed
+
+
+def resolve_llm_provider(settings: Settings) -> None:
+    """Log the OpenRouter backup and swap Gemini model IDs when that backup is on.
+
+    Repository variables still win: an explicit OpenRouter ``LLM_BASE_URL`` is
+    left as-is. If that URL is set while the models are still Gemini IDs, log
+    a warning instead of rewriting them.
+    """
+    configured = configured_llm_url()
+    if _openrouter_fallback_active(configured):
+        llm_chat_url()
+        if _swap_gemini_models_for_openrouter(settings):
+            _notice(
+                "openrouter-models",
+                "    已把 Gemini 模型 ID 换成 OpenRouter :free："
+                f"筛选 {' → '.join(settings.model_chain())}；"
+                f"翻译 {' → '.join(settings.translation_chain())}",
+            )
+        return
+    if _is_openrouter(configured) and any(
+        _is_gemini_model(name)
+        for name in (settings.screen_model, settings.fallback_model, settings.legacy_model)
+    ):
+        _notice(
+            "openrouter-gemini-models",
+            "⚠️ LLM_BASE_URL 指向 OpenRouter，但模型 ID 仍是 Gemini。"
+            "请清空仓库变量 LLM_BASE_URL 以使用 Gemini，或把 LLM_*_MODEL 改成 OpenRouter 的模型 ID。",
+        )
+
+
+def llm_min_interval() -> float:
+    raw = (os.getenv("LLM_MIN_INTERVAL") or "").strip()
+    if not raw:
+        return DEFAULT_LLM_MIN_INTERVAL
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return DEFAULT_LLM_MIN_INTERVAL
+
+
+def _pace_llm() -> None:
+    """Sleep so consecutive LLM calls are at least LLM_MIN_INTERVAL apart."""
+    global _last_llm_monotonic
+    interval = llm_min_interval()
+    now = time.monotonic()
+    if _last_llm_monotonic and interval > 0:
+        wait = interval - (now - _last_llm_monotonic)
+        if wait > 0:
+            time.sleep(wait)
+            now = time.monotonic()
+    _last_llm_monotonic = now
+
+
+def _retry_after_seconds(response: Any) -> Optional[float]:
+    headers = getattr(response, "headers", None)
+    getter = getattr(headers, "get", None)
+    if not callable(getter):
+        return None
+    try:
+        raw = getter("Retry-After")
+    except Exception:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, (str, int, float)):
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        return max(0.0, float(text))
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    if when is None:
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
+
+
+def _quota_wait_seconds(response: Any) -> float:
+    hinted = _retry_after_seconds(response)
+    if hinted is None:
+        return LLM_QUOTA_BACKOFF
+    if hinted > LLM_RETRY_AFTER_CAP:
+        print(f"    Retry-After {hinted:.0f}s 超过上限，按 {LLM_RETRY_AFTER_CAP:.0f}s 等待")
+        return LLM_RETRY_AFTER_CAP
+    return hinted
 
 
 def llm_timeout() -> int:
@@ -466,6 +674,7 @@ def llm_timeout() -> int:
 
 
 def _message_text(message: dict[str, Any]) -> str:
+    """Assistant text. Ignores Gemini ``extra_content.google.thought_signature``."""
     content = message.get("content")
     if isinstance(content, list):
         parts = []
@@ -473,11 +682,14 @@ def _message_text(message: dict[str, Any]) -> str:
             if isinstance(part, str):
                 parts.append(part)
             elif isinstance(part, dict):
-                parts.append(str(part.get("text") or ""))
+                kind = str(part.get("type") or "").lower()
+                if kind in {"thinking", "reasoning", "thought"}:
+                    continue
+                parts.append(str(part.get("text") or part.get("content") or ""))
         content = "\n".join(parts)
-    text = (content or "").strip()
+    text = content.strip() if isinstance(content, str) else ""
     if not text:
-        text = (message.get("reasoning_content") or "").strip()
+        text = str(message.get("reasoning_content") or "").strip()
     return text
 
 
@@ -512,6 +724,8 @@ def screening_messages(papers: list[dict[str, Any]], repair: bool = False) -> li
 
 
 def chat_completion(model: str, messages: list[dict[str, str]], max_tokens: int) -> str:
+    if llm_circuit_open():
+        raise LlmCircuitOpen("LLM circuit breaker is open")
     url = llm_chat_url()
     api_key = llm_api_key(url)
     if not api_key:
@@ -522,47 +736,71 @@ def chat_completion(model: str, messages: list[dict[str, str]], max_tokens: int)
         "max_tokens": max_tokens,
         "temperature": 0.1,
     }
-    # enable_thinking is a SiliconFlow extension. Other endpoints (OpenRouter) reject it.
+    # enable_thinking is a SiliconFlow extension. Gemini and OpenRouter reject it.
     if _is_siliconflow(url) and _thinking_switch(model):
         payload["enable_thinking"] = False
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     timeout = llm_timeout()
 
     def _post(body: dict[str, Any]) -> requests.Response:
-        return requests.post(url, headers=headers, json=body, timeout=timeout)
+        if llm_circuit_open():
+            raise LlmCircuitOpen("LLM circuit breaker is open")
+        _pace_llm()
+        try:
+            return requests.post(url, headers=headers, json=body, timeout=timeout)
+        except requests.RequestException as exc:
+            raise RuntimeError(type(exc).__name__) from exc
 
-    try:
-        response = _post(payload)
-    except requests.RequestException as exc:
-        raise RuntimeError(type(exc).__name__) from exc
+    response = _post(payload)
     if response.status_code == 400 and "enable_thinking" in payload:
         payload = dict(payload)
         payload.pop("enable_thinking", None)
-        try:
-            response = _post(payload)
-        except requests.RequestException as exc:
-            raise RuntimeError(type(exc).__name__) from exc
-    # 402: balance or credits exhausted. Do not walk the rest of the model chain.
-    if response.status_code in (401, 402, 403):
+        response = _post(payload)
+    if response.status_code in (401, 403):
         raise SiliconFlowAuthError(f"HTTP {response.status_code}")
+    # 429/402: honor Retry-After, otherwise one backoff, then give up on this call.
+    # The caller switches models. Do not loop screen_retries times on the same model.
+    if response.status_code in QUOTA_STATUSES:
+        wait = _quota_wait_seconds(response)
+        print(f"⚠️ {model} HTTP {response.status_code}，{wait:.0f}s 后重试一次")
+        time.sleep(wait)
+        response = _post(payload)
+        if response.status_code in (401, 403):
+            raise SiliconFlowAuthError(f"HTTP {response.status_code}")
+        if response.status_code in QUOTA_STATUSES:
+            raise LlmQuotaError(response.status_code)
     if response.status_code != 200:
         raise RuntimeError(f"HTTP {response.status_code}")
     try:
         message = response.json()["choices"][0]["message"]
     except (ValueError, KeyError, IndexError, TypeError) as exc:
         raise RuntimeError("bad response") from exc
+    if not isinstance(message, dict):
+        raise RuntimeError("bad response")
     return _message_text(message)
 
 
 def _screen_chunk(papers: list[dict[str, Any]], settings: Settings) -> Optional[list[Optional[dict[str, Any]]]]:
+    if llm_circuit_open():
+        return None
     ids = [str(paper.get("arxiv_id") or paper.get("doi") or paper.get("id") or "") for paper in papers]
     models = settings.model_chain()
+    quota_blocked = 0
     for model_index, model in enumerate(models):
+        if llm_circuit_open():
+            return None
+        blocked = False
         for attempt in range(settings.screen_retries + 1):
             try:
                 text = chat_completion(model, screening_messages(papers, repair=attempt > 0), _max_tokens(len(papers)))
             except SiliconFlowAuthError:
                 raise
+            except LlmQuotaError as exc:
+                print(f"⚠️ {model} 筛选仍被 HTTP {exc.status} 拒绝，该模型不再重试")
+                blocked = True
+                break
+            except LlmCircuitOpen:
+                return None
             except Exception as exc:
                 print(f"⚠️ {model} 筛选请求失败: {exc}")
                 if attempt < settings.screen_retries:
@@ -575,21 +813,31 @@ def _screen_chunk(papers: list[dict[str, Any]], settings: Settings) -> Optional[
             print(f"⚠️ {model} 的筛选 JSON 无法解析 ({attempt + 1}/{settings.screen_retries + 1})")
             if attempt < settings.screen_retries:
                 time.sleep(min(2 * (attempt + 1), 8))
+        if blocked:
+            quota_blocked += 1
         if model_index < len(models) - 1:
             print(f"    🔁 切换筛选模型: {models[model_index + 1]}")
+    if models and quota_blocked == len(models):
+        _trip_llm_circuit("本批筛选的")
     return None
 
 
 def screen_papers(papers: list[dict[str, Any]], settings: Settings) -> list[dict[str, Any]]:
     screened: list[Optional[dict[str, Any]]] = [None] * len(papers)
     batch_size = max(1, settings.screen_batch_size)
+    announced_circuit = False
     for start in range(0, len(papers), batch_size):
+        if llm_circuit_open():
+            if not announced_circuit:
+                print("⛔ LLM 已熔断，剩余候选不再打分，改走关键词备选")
+                announced_circuit = True
+            break
         chunk = papers[start:start + batch_size]
         parsed = _screen_chunk(chunk, settings)
         if parsed is None:
             parsed = [None] * len(chunk)
         for offset, item in enumerate(parsed):
-            if item is None and len(chunk) > 1:
+            if item is None and len(chunk) > 1 and not llm_circuit_open():
                 single = _screen_chunk([chunk[offset]], settings)
                 item = single[0] if single else None
             screened[start + offset] = item
@@ -644,8 +892,14 @@ def _plain_translation_messages(paper: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def _translate_chunk(papers: list[dict[str, Any]], settings: Settings) -> Optional[list[Optional[dict[str, str]]]]:
+    if llm_circuit_open():
+        return None
     models = settings.translation_chain()
+    quota_blocked = 0
     for model_index, model in enumerate(models):
+        if llm_circuit_open():
+            return None
+        blocked = False
         for attempt in range(2):
             try:
                 text = chat_completion(
@@ -655,6 +909,12 @@ def _translate_chunk(papers: list[dict[str, Any]], settings: Settings) -> Option
                 )
             except SiliconFlowAuthError:
                 raise
+            except LlmQuotaError as exc:
+                print(f"⚠️ {model} 翻译仍被 HTTP {exc.status} 拒绝，该模型不再重试")
+                blocked = True
+                break
+            except LlmCircuitOpen:
+                return None
             except Exception as exc:
                 print(f"⚠️ {model} 翻译请求失败: {exc}")
                 continue
@@ -662,6 +922,11 @@ def _translate_chunk(papers: list[dict[str, Any]], settings: Settings) -> Option
             if parsed is not None and any(item is not None for item in parsed):
                 print(f"    ✅ 摘要翻译 {model}: {sum(item is not None for item in parsed)}/{len(papers)}")
                 return parsed
+        if blocked:
+            quota_blocked += 1
+            if model_index < len(models) - 1:
+                print(f"    🔁 切换翻译模型: {models[model_index + 1]}")
+            continue
         if len(papers) == 1:
             try:
                 text = chat_completion(
@@ -671,6 +936,14 @@ def _translate_chunk(papers: list[dict[str, Any]], settings: Settings) -> Option
                 )
             except SiliconFlowAuthError:
                 raise
+            except LlmQuotaError as exc:
+                print(f"⚠️ {model} 翻译仍被 HTTP {exc.status} 拒绝，该模型不再重试")
+                quota_blocked += 1
+                if model_index < len(models) - 1:
+                    print(f"    🔁 切换翻译模型: {models[model_index + 1]}")
+                continue
+            except LlmCircuitOpen:
+                return None
             except Exception as exc:
                 print(f"⚠️ {model} 逐篇翻译失败: {exc}")
                 text = ""
@@ -680,6 +953,8 @@ def _translate_chunk(papers: list[dict[str, Any]], settings: Settings) -> Option
                 return labeled
         if model_index < len(models) - 1:
             print(f"    🔁 切换翻译模型: {models[model_index + 1]}")
+    if models and quota_blocked == len(models):
+        _trip_llm_circuit("本批翻译的")
     return None
 
 
@@ -691,15 +966,24 @@ def translate_selected(papers: list[dict[str, Any]], settings: Settings) -> None
     ]
     if not targets:
         return
+    if llm_circuit_open():
+        print("⛔ LLM 已熔断，跳过翻译，卡片改附英文摘要")
+        return
     print(f"翻译入选论文 {len(targets)} 篇（不翻译未入选的）")
+    announced_circuit = False
     for start in range(0, len(targets), TRANSLATE_BATCH_SIZE):
+        if llm_circuit_open():
+            if not announced_circuit:
+                print("⛔ LLM 已熔断，剩余论文不再翻译，卡片改附英文摘要")
+                announced_circuit = True
+            break
         chunk = targets[start:start + TRANSLATE_BATCH_SIZE]
         parsed = _translate_chunk(chunk, settings)
         if parsed is None:
             parsed = [None] * len(chunk)
-        if len(chunk) > 1 and any(item is None for item in parsed):
+        if len(chunk) > 1 and any(item is None for item in parsed) and not llm_circuit_open():
             for index, item in enumerate(parsed):
-                if item is not None:
+                if item is not None or llm_circuit_open():
                     continue
                 one = _translate_chunk([chunk[index]], settings)
                 parsed[index] = one[0] if one else None
@@ -802,7 +1086,9 @@ def _write_digest(path: os.PathLike[str] | str, digest: dict[str, Any]) -> None:
 
 
 def main(settings: Optional[Settings] = None) -> int:
+    reset_llm_runtime()
     settings = _ensure_prefilter(settings or load_settings())
+    resolve_llm_provider(settings)
     try:
         state = load_state(settings.state_path, settings.legacy_state_path)
     except ValueError as exc:
@@ -892,13 +1178,17 @@ def main(settings: Optional[Settings] = None) -> int:
         print(f"    · [{paper.get('keyword_score')}] {(paper.get('title') or '')[:80]}")
 
     if to_screen and not llm_api_key():
-        print("❌ 未设置 OPENROUTER_API_KEY 或 SILICONFLOW_API_KEY，无法筛选")
+        print(
+            "❌ 未设置 GEMINI_API_KEY，无法筛选。"
+            "OpenRouter 备份需要 OPENROUTER_API_KEY；"
+            "SiliconFlow 需要把 LLM_BASE_URL 指过去并设置 SILICONFLOW_API_KEY"
+        )
         return 1
 
     try:
         screened = screen_papers(to_screen, settings) if to_screen else []
     except SiliconFlowAuthError:
-        print("❌ LLM 鉴权失败或余额不足（401/402/403），本次不推送、不推进窗口")
+        print("❌ LLM 鉴权失败（401/403），本次不推送、不推进窗口")
         return 1
 
     ok = []
@@ -936,7 +1226,7 @@ def main(settings: Optional[Settings] = None) -> int:
         try:
             translate_selected(selected, settings)
         except SiliconFlowAuthError:
-            print("⚠️ 翻译模型鉴权失败或余额不足，卡片改附英文摘要")
+            print("⚠️ 翻译模型鉴权失败（401/403），卡片改附英文摘要")
     for paper in selected:
         label = BACKUP_LABEL if paper.get("backup") else "达标"
         print(f"  - [{label}] {paper.get('score')} {paper.get('title', '')[:72]}")
