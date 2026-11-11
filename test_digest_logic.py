@@ -368,6 +368,36 @@ class JsonAndDecisionTests(unittest.TestCase):
         self.assertIsNone(extract_json("not json at all"))
         self.assertIsNone(parse_screening_batch("[]", 1))
 
+    def test_extracts_json_after_think_tags_fences_and_prose(self):
+        payload = [{
+            "index": 0,
+            "id": "2401.12345",
+            "experimental": True,
+            "sample_form": "single crystal",
+            "growth_method": "flux",
+            "measurements": ["specific heat"],
+            "score": 8,
+            "highlight_zh": "单晶助熔剂生长并测量了比热",
+        }]
+        text = (
+            '<think>{"experimental": false, "score": 1, "highlight_zh": "这是思考不是答案"}</think>\n'
+            "前面有说明，不要把 {note: high} 当成结果。\n"
+            "```json\n"
+            + json.dumps(payload, ensure_ascii=False)
+            + "\n```\n后面的话忽略。"
+        )
+        self.assertEqual(extract_json(text), payload)
+        unclosed = "前面说明\n```json\n" + json.dumps(payload, ensure_ascii=False) + "\n后面没有结束围栏"
+        self.assertEqual(extract_json(unclosed), payload)
+        parsed = parse_screening_batch(text, 1, ["2401.12345"])
+        self.assertEqual(parsed[0]["score"], 8)
+        self.assertEqual(parsed[0]["highlight_zh"], "单晶助熔剂生长并测量了比热")
+        unfenced = (
+            '<thinking>{"score": 1}</thinking>\n'
+            '分析如下：\n[{"experimental": true, "score": 8}]\n以上。'
+        )
+        self.assertEqual(extract_json(unfenced), [{"experimental": True, "score": 8}])
+
     def test_hard_drop_theory_and_mbe_film(self):
         theory = decide_screening(paper(), screening(experimental=False, score=9))
         self.assertTrue(theory["hard_drop"])
@@ -834,14 +864,26 @@ arxiv_monitor:
         self.assertEqual(settings.max_lookback_days, 6)
         self.assertIn("antiferromagnet*", settings.secondary_keywords)
         self.assertIn("photoanode", settings.hard_negative_keywords)
-        self.assertEqual(settings.screen_model, "google/gemma-4-31b-it:free")
-        self.assertEqual(settings.fallback_model, "nvidia/nemotron-3.5-lightning:free")
-        self.assertEqual(settings.legacy_model, "google/gemma-4-26b-a4b-it:free")
-        self.assertEqual(settings.model_chain()[0], "google/gemma-4-31b-it:free")
+        self.assertEqual(settings.screen_model, "gemini-3.5-flash")
+        self.assertEqual(settings.fallback_model, "gemini-3.5-flash-lite")
+        self.assertEqual(settings.legacy_model, "gemini-3.5-flash")
+        self.assertEqual(settings.model_chain(), ["gemini-3.5-flash", "gemini-3.5-flash-lite"])
         self.assertEqual(
             settings.translation_chain(),
-            ["google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-lightning:free"],
+            ["gemini-3.5-flash", "gemini-3.5-flash-lite"],
         )
+
+    def test_builtin_defaults_are_gemini_when_config_omits_models(self):
+        folder = Path(tempfile.mkdtemp())
+        path = folder / "config.yaml"
+        path.write_text("arxiv_monitor:\n  categories: [cond-mat.str-el]\n", encoding="utf-8")
+        settings = load_settings(path, environ={})
+        self.assertEqual(settings.screen_model, "gemini-3.5-flash")
+        self.assertEqual(settings.fallback_model, "gemini-3.5-flash-lite")
+        self.assertEqual(settings.legacy_model, "gemini-3.5-flash")
+        bare = digest_lib.Settings()
+        self.assertEqual(bare.screen_model, "gemini-3.5-flash")
+        self.assertEqual(bare.model_chain(), ["gemini-3.5-flash", "gemini-3.5-flash-lite"])
 
     def test_pending_retries_then_drops(self):
         failed = paper(arxiv_id="2401.00001", doi=None)
@@ -867,12 +909,14 @@ arxiv_monitor:
             "FEISHU_WEBHOOK_URL",
             "FEISHU_SECRET",
             "OPENROUTER_API_KEY",
+            "GEMINI_API_KEY",
             "SILICONFLOW_API_KEY",
             "LLM_BASE_URL",
-            "https://openrouter.ai/api/v1/chat/completions",
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
             "LLM_SCREEN_MODEL",
             "LLM_FALLBACK_MODEL",
             "LLM_TRANSLATE_MODEL",
+            "LLM_MIN_INTERVAL",
             "RESULTS_WEBHOOK_URL",
             "RESULTS_WEBHOOK_SECRET",
             "digest.json",
@@ -882,6 +926,11 @@ arxiv_monitor:
         self.assertNotIn("MAX_PAPERS_PER_RUN", text)
         self.assertNotIn("iopscience", text.lower())
         self.assertNotIn("open.feishu.cn", text)
+        self.assertIn(
+            "|| 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'",
+            text,
+        )
+        self.assertNotIn("|| 'https://openrouter.ai/api/v1/chat/completions'", text)
 
 
 class ScreenCacheTests(unittest.TestCase):
@@ -959,11 +1008,14 @@ class ScreeningAndRunTests(unittest.TestCase):
         monitor.ARXIV_QUERY_DELAY = 0
         self._old_env = {
             key: os.environ.get(key)
-            for key in ("SILICONFLOW_API_KEY", "OPENROUTER_API_KEY", "FEISHU_WEBHOOK_URL",
-                        "FEISHU_SECRET", "RESULTS_WEBHOOK_URL", "RESULTS_WEBHOOK_SECRET",
-                        "LLM_BASE_URL", "OPENAI_COMPAT_URL", "LLM_TIMEOUT", "SILICONFLOW_TIMEOUT")
+            for key in ("SILICONFLOW_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY",
+                        "FEISHU_WEBHOOK_URL", "FEISHU_SECRET", "RESULTS_WEBHOOK_URL",
+                        "RESULTS_WEBHOOK_SECRET", "LLM_BASE_URL", "OPENAI_COMPAT_URL",
+                        "LLM_TIMEOUT", "SILICONFLOW_TIMEOUT", "LLM_MIN_INTERVAL")
         }
         os.environ["SILICONFLOW_API_KEY"] = "test-key"
+        os.environ["GEMINI_API_KEY"] = "test-gemini-key"
+        os.environ["LLM_MIN_INTERVAL"] = "0"
         os.environ.pop("OPENROUTER_API_KEY", None)
         os.environ.pop("LLM_BASE_URL", None)
         os.environ.pop("OPENAI_COMPAT_URL", None)
@@ -971,6 +1023,7 @@ class ScreeningAndRunTests(unittest.TestCase):
         os.environ["FEISHU_SECRET"] = "test-sign-secret"
         os.environ.pop("RESULTS_WEBHOOK_URL", None)
         os.environ.pop("RESULTS_WEBHOOK_SECRET", None)
+        monitor.reset_llm_runtime()
 
     def tearDown(self):
         for key, value in self._old_env.items():
@@ -978,6 +1031,7 @@ class ScreeningAndRunTests(unittest.TestCase):
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+        monitor.reset_llm_runtime()
 
     def _settings(self, dry_run: bool = False):
         folder = Path(tempfile.mkdtemp())
@@ -1004,6 +1058,8 @@ class ScreeningAndRunTests(unittest.TestCase):
 
     @patch.object(monitor.requests, "post")
     def test_screening_uses_screen_model_then_fallback(self, post):
+        os.environ["LLM_BASE_URL"] = monitor.SILICONFLOW_URL
+        os.environ.pop("OPENROUTER_API_KEY", None)
         settings = self._settings()
         settings.screen_model = "Qwen/Qwen3.6-27B"
         settings.fallback_model = "Qwen/Qwen3.5-9B"
@@ -1030,18 +1086,36 @@ class ScreeningAndRunTests(unittest.TestCase):
             monitor.screen_papers([self._candidate()], settings)
         self.assertEqual(post.call_count, 1)
 
+    @patch.object(monitor.time, "sleep")
     @patch.object(monitor.requests, "post")
-    def test_payment_required_does_not_try_another_model(self, post):
+    def test_payment_required_retries_once_then_switches_and_opens_circuit(self, post, sleep):
         settings = self._settings()
-        settings.screen_model = "google/gemma-4-31b-it:free"
-        settings.fallback_model = "nvidia/nemotron-3.5-lightning:free"
-        settings.legacy_model = "google/gemma-4-26b-a4b-it:free"
+        settings.screen_model = "gemini-3.5-flash"
+        settings.fallback_model = "gemini-3.5-flash-lite"
+        settings.legacy_model = "gemini-3.5-flash"
         settings.screen_retries = 2
-        post.return_value = Mock(status_code=402, text="insufficient balance")
-        with self.assertRaises(monitor.SiliconFlowAuthError):
-            monitor.screen_papers([self._candidate()], settings)
-        self.assertEqual(post.call_count, 1)
-        self.assertEqual(post.call_args.kwargs["json"]["model"], "google/gemma-4-31b-it:free")
+        settings.screen_batch_size = 2
+        post.return_value = Mock(status_code=402, headers={}, text="insufficient balance")
+        papers = [self._candidate(), paper(arxiv_id="2401.12346", id="2401.12346", title="Another kagome crystal")]
+        decided = monitor.screen_papers(papers, settings)
+        # Two models, one backoff retry each. screen_retries must not add a third fast loop.
+        self.assertEqual(post.call_count, 4)
+        models = [call.kwargs["json"]["model"] for call in post.call_args_list]
+        self.assertEqual(models, [
+            "gemini-3.5-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.5-flash-lite",
+        ])
+        self.assertEqual(
+            [call.args[0] for call in sleep.call_args_list],
+            [monitor.LLM_QUOTA_BACKOFF, monitor.LLM_QUOTA_BACKOFF],
+        )
+        self.assertTrue(all(item["screen_error"] for item in decided))
+        self.assertTrue(monitor.llm_circuit_open())
+        post.reset_mock()
+        monitor.translate_selected(papers, settings)
+        post.assert_not_called()
 
     @patch.object(monitor.requests, "post")
     def test_openrouter_prefers_its_key_and_skips_thinking_flag(self, post):
@@ -1075,6 +1149,182 @@ class ScreeningAndRunTests(unittest.TestCase):
         os.environ["OPENAI_COMPAT_URL"] = monitor.OPENROUTER_URL
         self.assertEqual(monitor.llm_chat_url(), monitor.OPENROUTER_URL)
         self.assertEqual(monitor.llm_api_key(), "or-only")
+
+    @patch.object(monitor.requests, "post")
+    def test_gemini_is_the_default_endpoint_and_key(self, post):
+        os.environ.pop("LLM_BASE_URL", None)
+        os.environ.pop("OPENAI_COMPAT_URL", None)
+        os.environ.pop("OPENROUTER_API_KEY", None)
+        os.environ["GEMINI_API_KEY"] = "gem-key"
+        os.environ["SILICONFLOW_API_KEY"] = "sf-key"
+        os.environ["LLM_BASE_URL"] = "   "
+        post.return_value = Mock(
+            status_code=200,
+            json=lambda: {"choices": [{"message": {"content": "ok"}}]},
+        )
+        monitor.chat_completion("gemini-3.5-flash", [{"role": "user", "content": "hi"}], 16)
+        self.assertEqual(post.call_args.args[0], monitor.GEMINI_URL)
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer gem-key")
+        self.assertNotIn("enable_thinking", post.call_args.kwargs["json"])
+        self.assertEqual(monitor.llm_api_key(monitor.OPENROUTER_URL), "sf-key")
+
+    def test_missing_gemini_key_falls_back_to_openrouter_models(self):
+        os.environ.pop("GEMINI_API_KEY", None)
+        os.environ.pop("LLM_BASE_URL", None)
+        os.environ.pop("OPENAI_COMPAT_URL", None)
+        os.environ["OPENROUTER_API_KEY"] = "or-key"
+        os.environ["SILICONFLOW_API_KEY"] = "sf-key"
+        self.assertEqual(monitor.llm_api_key(monitor.GEMINI_URL), "")
+        settings = load_settings(environ={})
+        self.assertEqual(settings.screen_model, "gemini-3.5-flash")
+        monitor.reset_llm_runtime()
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.assertEqual(monitor.llm_chat_url(), monitor.OPENROUTER_URL)
+            self.assertEqual(monitor.llm_api_key(), "or-key")
+            monitor.resolve_llm_provider(settings)
+        log = buffer.getvalue()
+        self.assertIn("GEMINI_API_KEY", log)
+        self.assertIn("OPENROUTER_API_KEY", log)
+        self.assertIn(monitor.OPENROUTER_URL, log)
+        self.assertIn("gemma-4", log)
+        self.assertEqual(settings.screen_model, monitor.OPENROUTER_SCREEN_MODEL)
+        self.assertEqual(settings.fallback_model, monitor.OPENROUTER_FALLBACK_MODEL)
+        self.assertEqual(settings.legacy_model, monitor.OPENROUTER_TRANSLATE_MODEL)
+        self.assertEqual(settings.model_chain()[0], "google/gemma-4-31b-it:free")
+        kept = load_settings(environ={"LLM_SCREEN_MODEL": "custom/keep-me"})
+        monitor.reset_llm_runtime()
+        monitor.resolve_llm_provider(kept)
+        self.assertEqual(kept.screen_model, "custom/keep-me")
+        self.assertEqual(kept.fallback_model, monitor.OPENROUTER_FALLBACK_MODEL)
+
+    def test_explicit_openrouter_url_keeps_gemini_model_override(self):
+        os.environ.pop("GEMINI_API_KEY", None)
+        os.environ["OPENROUTER_API_KEY"] = "or-key"
+        os.environ["LLM_BASE_URL"] = monitor.OPENROUTER_URL
+        settings = load_settings(environ={"LLM_SCREEN_MODEL": "custom/openrouter-screen"})
+        settings.fallback_model = "gemini-3.5-flash-lite"
+        settings.legacy_model = "gemini-3.5-flash"
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            monitor.resolve_llm_provider(settings)
+        self.assertIn("清空仓库变量 LLM_BASE_URL", buffer.getvalue())
+        self.assertEqual(settings.screen_model, "custom/openrouter-screen")
+        self.assertEqual(settings.fallback_model, "gemini-3.5-flash-lite")
+        self.assertEqual(monitor.llm_chat_url(), monitor.OPENROUTER_URL)
+
+    @patch.object(monitor.time, "sleep")
+    @patch.object(monitor.requests, "post")
+    def test_429_respects_retry_after_then_stays_on_the_same_model(self, post, sleep):
+        settings = self._settings()
+        settings.screen_model = "gemini-3.5-flash"
+        settings.fallback_model = "gemini-3.5-flash-lite"
+        settings.legacy_model = "gemini-3.5-flash"
+        settings.screen_retries = 2
+        good = json.dumps([screening(id="2401.12345")])
+        post.side_effect = [
+            Mock(status_code=429, headers={"Retry-After": "5"}, text="slow down"),
+            Mock(status_code=200, headers={}, json=lambda: {"choices": [{"message": {"content": good}}]}),
+        ]
+        decided = monitor.screen_papers([self._candidate()], settings)
+        self.assertTrue(decided[0]["passes"])
+        self.assertEqual(post.call_count, 2)
+        models = [call.kwargs["json"]["model"] for call in post.call_args_list]
+        self.assertEqual(models, ["gemini-3.5-flash", "gemini-3.5-flash"])
+        self.assertEqual(sleep.call_args_list[0].args[0], 5.0)
+        self.assertFalse(monitor.llm_circuit_open())
+
+    @patch.object(monitor.time, "sleep")
+    @patch.object(monitor.requests, "post")
+    def test_retry_after_is_capped_and_http_date_parses(self, post, sleep):
+        when = datetime.now(timezone.utc) + timedelta(seconds=15)
+        from email.utils import format_datetime
+        dated = Mock(headers={"Retry-After": format_datetime(when, usegmt=True)})
+        seconds = monitor._retry_after_seconds(dated)
+        self.assertGreater(seconds, 8)
+        self.assertLess(seconds, 25)
+        huge = Mock(headers={"Retry-After": "9999"})
+        self.assertEqual(monitor._quota_wait_seconds(huge), monitor.LLM_RETRY_AFTER_CAP)
+        self.assertIsNone(monitor._retry_after_seconds(Mock(headers={})))
+        post.side_effect = [
+            Mock(status_code=429, headers={"Retry-After": "9999"}, text="slow"),
+            Mock(status_code=200, headers={}, json=lambda: {"choices": [{"message": {"content": "ok"}}]}),
+        ]
+        monitor.chat_completion("gemini-3.5-flash", [{"role": "user", "content": "hi"}], 16)
+        self.assertEqual(sleep.call_args.args[0], monitor.LLM_RETRY_AFTER_CAP)
+
+    @patch.object(monitor.time, "sleep")
+    @patch.object(monitor.time, "monotonic")
+    @patch.object(monitor.requests, "post")
+    def test_min_interval_paces_between_calls(self, post, monotonic, sleep):
+        os.environ["LLM_MIN_INTERVAL"] = "4"
+        monitor._last_llm_monotonic = 100.0
+        monotonic.side_effect = [101.0, 104.0]
+        post.return_value = Mock(
+            status_code=200,
+            headers={},
+            json=lambda: {"choices": [{"message": {"content": "ok"}}]},
+        )
+        monitor.chat_completion("gemini-3.5-flash", [{"role": "user", "content": "hi"}], 16)
+        self.assertAlmostEqual(sleep.call_args.args[0], 3.0)
+        self.assertEqual(post.call_count, 1)
+
+    @patch.object(monitor.requests, "post")
+    def test_screening_parses_fenced_json_and_ignores_thought_signature(self, post):
+        good = json.dumps([screening(id="2401.12345")], ensure_ascii=False)
+        content = (
+            '<think>{"experimental": false, "score": 1, "highlight_zh": "这是思考不是答案"}</think>\n'
+            "```json\n"
+            + good
+            + "\n```\n"
+        )
+        post.return_value = Mock(
+            status_code=200,
+            headers={},
+            json=lambda: {
+                "choices": [{
+                    "message": {
+                        "role": "assistant",
+                        "content": content,
+                        "extra_content": {"google": {"thought_signature": "sig-{not-the-answer}"}},
+                    }
+                }]
+            },
+        )
+        settings = self._settings()
+        settings.screen_retries = 0
+        decided = monitor.screen_papers([self._candidate()], settings)
+        self.assertEqual(post.call_count, 1)
+        self.assertTrue(decided[0]["passes"])
+        self.assertEqual(decided[0]["score"], 8)
+        joined = monitor._message_text({
+            "content": [
+                {"type": "thinking", "text": '{"score": 1}'},
+                {"type": "text", "text": content},
+            ],
+            "extra_content": {"google": {"thought_signature": "sig"}},
+        })
+        self.assertEqual(digest_lib.extract_json(joined)[0]["score"], 8)
+
+    @patch.object(monitor.time, "sleep")
+    @patch.object(monitor.requests, "post")
+    def test_translation_quota_opens_circuit_for_the_rest_of_the_run(self, post, _sleep):
+        settings = self._settings()
+        settings.legacy_model = "gemini-3.5-flash"
+        settings.fallback_model = "gemini-3.5-flash-lite"
+        post.return_value = Mock(status_code=429, headers={"Retry-After": "0"}, text="slow")
+        papers = [
+            paper(title=f"Spin liquid crystal {index}", summary="Single crystals were grown. Specific heat was measured.")
+            for index in range(3)
+        ]
+        monitor.translate_selected(papers, settings)
+        # First batch of two papers: two models, one retry each. The third paper is not sent.
+        self.assertEqual(post.call_count, 4)
+        self.assertTrue(monitor.llm_circuit_open())
+        self.assertTrue(all("title_zh" not in item for item in papers))
+        post.reset_mock()
+        monitor.screen_papers([self._candidate()], settings)
+        post.assert_not_called()
 
     def _fill_translation(self, papers, _settings):
         formula = r"$\mathbf{C}=(1,1,1)$"

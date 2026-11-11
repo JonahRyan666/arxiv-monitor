@@ -26,15 +26,19 @@ jobs:
     timeout-minutes: 45
     env:
       # 仓库变量未设置时为空，脚本会回退到 config.yaml，再回退到内置默认值。
-      # 生产走 OpenRouter 免费模型。LLM_BASE_URL 未设置时用下面的 chat/completions 地址，
-      # 不要只填到 /v1。旧的 SILICONFLOW_*_MODEL 仍是别名；若仓库变量里还留着付费模型 ID，
-      # 会盖过 config.yaml 里的 :free 默认值，需要清掉或改成 OpenRouter 的模型 ID。
+      # 生产默认走 Gemini 的 OpenAI 兼容端点。LLM_BASE_URL 为空时用下面的完整地址，
+      # 不要只填到 /v1beta。模型默认 gemini-3.5-flash / gemini-3.5-flash-lite。
+      # 若仓库变量仍是 OpenRouter 的地址或 :free 模型 ID，会盖过这里的默认值，需要清掉。
+      # 没有 GEMINI_API_KEY 但有 OPENROUTER_API_KEY 时，脚本会打日志并回退到
+      # https://openrouter.ai/api/v1/chat/completions 和以前的 :free 模型。
+      # 旧的 SILICONFLOW_*_MODEL 仍是别名，只在对应的 LLM_*_MODEL 为空时生效。
       MAX_PAPERS_PER_DAY: ${{ vars.MAX_PAPERS_PER_DAY }}
       MIN_PAPERS_PER_DAY: ${{ vars.MIN_PAPERS_PER_DAY }}
-      LLM_BASE_URL: ${{ vars.LLM_BASE_URL != '' && vars.LLM_BASE_URL || 'https://openrouter.ai/api/v1/chat/completions' }}
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL != '' && vars.LLM_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' }}
       LLM_SCREEN_MODEL: ${{ vars.LLM_SCREEN_MODEL }}
       LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
       LLM_TRANSLATE_MODEL: ${{ vars.LLM_TRANSLATE_MODEL }}
+      LLM_MIN_INTERVAL: ${{ vars.LLM_MIN_INTERVAL }}
       SILICONFLOW_SCREEN_MODEL: ${{ vars.SILICONFLOW_SCREEN_MODEL }}
       SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL }}
       SILICONFLOW_FALLBACK_MODEL: ${{ vars.SILICONFLOW_FALLBACK_MODEL }}
@@ -69,9 +73,11 @@ jobs:
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
-          # 主路径。Settings → Secrets and variables → Actions → Secrets。
+          # 主路径。Settings → Secrets → GEMINI_API_KEY（https://aistudio.google.com/apikey）。
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 可选备份：没有 Gemini 密钥时回退到 OpenRouter。
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          # 可选备份：仅当 LLM_BASE_URL 指回 SiliconFlow 时才会优先使用。
+          # 仅当 LLM_BASE_URL 指回 SiliconFlow 时才会优先使用。
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           RESULTS_WEBHOOK_URL: ${{ secrets.RESULTS_WEBHOOK_URL }}
           RESULTS_WEBHOOK_SECRET: ${{ secrets.RESULTS_WEBHOOK_SECRET }}

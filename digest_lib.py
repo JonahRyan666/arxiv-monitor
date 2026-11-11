@@ -37,11 +37,13 @@ DISCUSSION_FOOTER = (
 )
 
 DEFAULT_CATEGORIES = ("cond-mat.str-el", "cond-mat.mtrl-sci")
-# OpenRouter :free chat models verified against https://openrouter.ai/api/v1/models
-# on 2026-11-05. google/gemma-3-27b-it:free is not on that list.
-DEFAULT_SCREEN_MODEL = "google/gemma-4-31b-it:free"
-DEFAULT_FALLBACK_MODEL = "nvidia/nemotron-3.5-lightning:free"
-DEFAULT_LEGACY_MODEL = "google/gemma-4-26b-a4b-it:free"
+# Gemini models on the OpenAI-compatible endpoint
+# https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+# Verified 2026-11-11: gemini-3.5-flash and gemini-3.5-flash-lite.
+# Screen order: flash → flash-lite. Translate order: flash → flash-lite.
+DEFAULT_SCREEN_MODEL = "gemini-3.5-flash"
+DEFAULT_FALLBACK_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_LEGACY_MODEL = "gemini-3.5-flash"
 DEFAULT_MAX_PAPERS = 10
 DEFAULT_MIN_PAPERS = 5
 DEFAULT_LOOKBACK_DAYS = 6
@@ -1285,12 +1287,53 @@ def update_pending(
     return list(kept.values())
 
 
+# Closed reasoning blocks often contain braces that are not the answer.
+_THINK_BLOCK_RE = re.compile(
+    r"<(think|thinking|reasoning|thought)\b[^>]*>[\s\S]*?</\1>",
+    re.IGNORECASE,
+)
+# An unclosed think tag that runs up to a code fence (Gemini sometimes omits </think>).
+_THINK_TO_FENCE_RE = re.compile(
+    r"<(?:think|thinking|reasoning|thought)\b[^>]*>[\s\S]*?(?=```)",
+    re.IGNORECASE,
+)
+_FENCE_RE = re.compile(
+    r"```[ \t]*(?:json|javascript)?[ \t]*\r?\n?([\s\S]*?)```",
+    re.IGNORECASE,
+)
+_FENCE_MARK_RE = re.compile(
+    r"```[ \t]*(?:json|javascript)?",
+    re.IGNORECASE,
+)
+
+
+def _prepare_llm_text(text: str) -> str:
+    """Drop think tags and invisible characters so the JSON scan sees the answer."""
+    cleaned = (
+        text.replace("\ufeff", "")
+        .replace("\u200b", "")
+        .replace("\u200c", "")
+        .replace("\u200d", "")
+    )
+    previous = None
+    while previous != cleaned:
+        previous = cleaned
+        cleaned = _THINK_BLOCK_RE.sub(" ", cleaned)
+    cleaned = _THINK_TO_FENCE_RE.sub(" ", cleaned)
+    return cleaned
+
+
 def extract_json(text: str) -> Any:
-    if not text:
+    """Parse a JSON array or object out of an LLM reply.
+
+    Tolerates leading/trailing prose, ```json fences (Gemini wraps answers this
+    way), trailing commas, and <think> / <thinking> blocks. Fenced JSON wins
+    over braces inside the surrounding prose. A fenced array is preferred over
+    a fenced object so screening batches are not shadowed by a small note.
+    """
+    if not text or not str(text).strip():
         return None
-    cleaned = text.strip()
-    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\s*```\s*$", "", cleaned)
+    cleaned = _prepare_llm_text(str(text))
     decoder = json.JSONDecoder()
 
     def _try(blob: str) -> Any:
@@ -1304,11 +1347,30 @@ def extract_json(text: str) -> Any:
             return value
         return None
 
-    parsed = _try(cleaned)
-    if parsed is not None:
-        return parsed
-    relaxed = re.sub(r",\s*([}\]])", r"\1", cleaned)
-    return _try(relaxed)
+    def _parse(blob: str) -> Any:
+        if not blob or not str(blob).strip():
+            return None
+        parsed = _try(blob)
+        if parsed is not None:
+            return parsed
+        relaxed = re.sub(r",\s*([}\]])", r"\1", blob)
+        if relaxed != blob:
+            return _try(relaxed)
+        return None
+
+    fenced_lists: list[Any] = []
+    fenced_other: list[Any] = []
+    for match in _FENCE_RE.finditer(cleaned):
+        parsed = _parse(match.group(1))
+        if isinstance(parsed, list):
+            fenced_lists.append(parsed)
+        elif parsed is not None:
+            fenced_other.append(parsed)
+    if fenced_lists:
+        return fenced_lists[0]
+    if fenced_other:
+        return fenced_other[0]
+    return _parse(_FENCE_MARK_RE.sub(" ", cleaned))
 
 
 def _parse_bool(value: Any) -> Optional[bool]:

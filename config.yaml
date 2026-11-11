@@ -222,11 +222,11 @@ arxiv_monitor:
   max_authors_display: 3
 
   models:
-    # OpenRouter 免费聊天模型（ID 以 :free 结尾）。2026-11-05 对照
-    # https://openrouter.ai/api/v1/models 确认存在。google/gemma-3-27b-it:free 不在免费列表。
-    # 筛选顺序：screen → fallback → legacy。翻译顺序：legacy → fallback。
-    # 无额度账号的 :free 大约 20 次/分钟、50 次/天（失败也计入）。生产环境应把
-    # LLM_BASE_URL 设为 https://openrouter.ai/api/v1/chat/completions 。
-    screen: google/gemma-4-31b-it:free
-    fallback: nvidia/nemotron-3.5-lightning:free
-    legacy: google/gemma-4-26b-a4b-it:free
+    # Gemini OpenAI 兼容接口上的模型。2026-11-11 用
+    # https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+    # 确认 gemini-3.5-flash 与 gemini-3.5-flash-lite 可用。
+    # 筛选顺序：screen → fallback → legacy（后两个与 screen 相同则去重）。
+    # 翻译顺序：legacy → fallback。仓库变量 LLM_*_MODEL 仍可覆盖这里。
+    screen: gemini-3.5-flash
+    fallback: gemini-3.5-flash-lite
+    legacy: gemini-3.5-flash
