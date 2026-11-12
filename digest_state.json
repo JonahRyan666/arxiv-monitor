@@ -3,6 +3,7 @@
     "10.1039/d6tc01028h",
     "10.1088/1674-1056/ae6b3b",
     "10.1088/1674-1056/aeba69",
+    "10.1103/jlhg-yy14",
     "10.1103/xpcs-4726",
     "10.7566/jpsj.95.113702",
     "10.7566/jpsj.95.114703",
@@ -63,6 +64,7 @@
     "2611.07337",
     "2611.07400",
     "2611.07422",
+    "2611.07564",
     "2611.07597",
     "2611.07807",
     "2611.07893",
@@ -87,9 +89,13 @@
     "2611.10946",
     "2611.11353",
     "2611.11772",
+    "2611.11781",
     "2611.12460",
+    "2611.13351",
     "2611.13532",
+    "2611.13579",
     "2611.14072",
+    "2611.14185",
     "2611.14444"
   ],
   "sent_titles": [
@@ -179,7 +185,12 @@
     "Crystal and magnetic structures of MnSi in zero magnetic field: Neutron diffraction and symmetry analysis",
     "Discovery of Kondo-Kramers Nodal Line Topological State in strongly correlated material CeAuAl$_3$",
     "Local electronic structure of the Co2+ ions in the disordered perovskite phase of Ba3CoNb2O9: a temperature-dependent X-ray absorption and magnetic circular dichroism study",
-    "Real-Space Visualization of Site-Selective Co 3 d States in the Ising Magnet Ca 3 Co 2 O 6"
+    "Real-Space Visualization of Site-Selective Co 3 d States in the Ising Magnet Ca 3 Co 2 O 6",
+    "Hidden interfacial magnetism in RuO$_2$ heterostructures revealed by a superconducting spin switch",
+    "Thermodynamic signatures of a nearby quantum critical endpoint in UTe$_2$ under intense magnetic field",
+    "Optically modulated field-dependent electrical response in a non-collinear antiferromagnet/ferromagnet heterostructure",
+    "Supercurrent-controlled magnon transport via suppression of the superconducting gap",
+    "Experimental demonstration of dual-polarization nonreciprocal thermal emission at moderate magnetic fields"
   ],
   "pending": [
     {
@@ -190,12 +201,6 @@
     },
     {
       "arxiv_id": "2611.09469",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
-      "arxiv_id": "2611.07564",
       "doi": null,
       "source": "arxiv",
       "attempts": 1
@@ -279,12 +284,6 @@
       "attempts": 1
     },
     {
-      "arxiv_id": "2611.11781",
-      "doi": "10.1103/jlhg-yy14",
-      "source": "arxiv",
-      "attempts": 1
-    },
-    {
       "arxiv_id": "2611.12598",
       "doi": null,
       "source": "arxiv",
@@ -292,27 +291,6 @@
     }
   ],
   "screened": {
-    "10.1002/adfm.79184": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "这是一篇关于二维磁性材料（包括交替反铁磁）的综述文章，主要讨论对称性、证据分类和器件就绪度，未包含针对特定块体单晶或多晶的实验测量数据。"
-      }
-    },
     "10.1039/d6tc01028h": {
       "at": "2026-11-04T07:07:25.558066+00:00",
       "result": {
@@ -425,6 +403,69 @@
         "highlight_zh": "研究铁磁/超导体异质结构中的超电流控制磁振子输运，偏离块体阻挫磁体与多铁方向。"
       }
     },
+    "10.7566/jpsj.95.114003": {
+      "at": "2026-11-12T07:53:03.509932+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "量子-神经网络混合算法研究与数值模拟，不含真实样品测量。"
+      }
+    },
+    "10.7566/jpsj.95.114005": {
+      "at": "2026-11-12T07:53:03.509932+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "二维方格Ising模型自由能的纯理论推导，无实验样品和测量。"
+      }
+    },
+    "10.7566/jpsj.95.118001": {
+      "at": "2026-11-12T07:53:03.509932+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "关于霍尔导电率理论论文的勘误，无实际样品和测量数据。"
+      }
+    },
     "10.7566/jpsj.95.124003": {
       "at": "2026-11-11T07:24:06.641335+00:00",
       "result": {
@@ -446,218 +487,6 @@
         "topic": "adjacent",
         "score": 7.0,
         "highlight_zh": "利用同步辐射X射线衍射与价电子密度分析，真实空间可视化了Ising链状磁体Ca3Co2O6中不相同位点Co 3d轨道的局部各向异性与杂化状态。"
-      }
-    },
-    "2610.34296": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯理论计算，基于第一性原理研究铁磁单层材料的Edelstein效应，无实验样品。"
-      }
-    },
-    "2610.35236": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "film",
-        "growth_method": "MBE",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": true,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "研究α-MnTe薄膜表面的原子结构和电子态，属于自旋电子学薄膜材料研究，非块体量子磁体。"
-      }
-    },
-    "2610.36313": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "film",
-        "growth_method": "PLD",
-        "measurements": [
-          "dielectric"
-        ],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 3.0,
-        "highlight_zh": "研究通过脉冲激光沉积（PLD）制备锶钡钛酸盐（BST）薄膜，并测量其介电性质随氧分压的变化。这是纯铁电/介电的薄膜工作，不涉及磁性阻挫或块体单晶生长，偏离核心方向。"
-      }
-    },
-    "2610.36332": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "single crystal",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 2.0,
-        "highlight_zh": "研究重费米子超导体UTe2中的超导二极管效应，属于超导物理领域，非阻挫磁体或量子自旋液体。"
-      }
-    },
-    "2610.37754": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯理论计算，研究二维系统中的元交替磁性和自旋分裂，无实验样品。"
-      }
-    },
-    "2610.38491": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "这是一篇关于二维磁性材料（包括交替反铁磁）的综述文章，主要讨论对称性、证据分类和器件就绪度，未包含针对特定块体单晶或多晶的实验测量数据。"
-      }
-    },
-    "2610.38627": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "film",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 2.0,
-        "highlight_zh": "研究薄膜PbZrO3中的反铁电-铁电转变及应变调控，属于纯铁电/介电薄膜器件研究，无磁性测量。"
-      }
-    },
-    "2610.39841": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "film",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "研究YIG/GGG/Pt纳米颗粒/YIG异质结中的磁子结效应，属于自旋电子学器件范畴，非块体量子磁体或阻挫磁体研究。"
-      }
-    },
-    "2610.40093": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯理论计算，使用扩散蒙特卡洛方法研究强耦合电子气的静态响应，无实验样品。"
-      }
-    },
-    "2610.40657": {
-      "at": "2026-10-31T06:30:24.021701+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯理论计算，构建任意子气体的变分波函数，无实验样品。"
       }
     },
     "2610.40739": {
@@ -2865,5 +2694,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-11T07:24:06.641335+00:00"
+  "last_successful_run": "2026-11-12T07:53:03.509932+00:00"
 }
