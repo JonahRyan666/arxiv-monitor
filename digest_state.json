@@ -106,6 +106,7 @@
     "2611.15380",
     "2611.15631",
     "2611.15693",
+    "2611.15713",
     "2611.15984",
     "2611.16841",
     "2611.16939",
@@ -214,7 +215,8 @@
     "Cation-intermixing driven evolution from a narrow avoided crossing to an enlarged inverted gap in Ge$_2$Bi$_2$Te$_5$",
     "Hybridization-brightened interlayer excitons in multilayer WSe2 controlled by sliding ferroelectricity",
     "Multicomponent Isotope Engineering of Phonon Polaritons in Hexagonal Boron Nitride",
-    "Supermoiré Formation and Robust Topological Edge State in Helical Trilayer Graphene"
+    "Supermoiré Formation and Robust Topological Edge State in Helical Trilayer Graphene",
+    "Zero-Field Optical Readout of Quintet States in Through-Space Coupled Tetracene Oligomers at Room Temperature"
   ],
   "pending": [
     {
@@ -3015,5 +3017,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-14T07:14:43.858539+00:00"
+  "last_successful_run": "2026-11-15T07:24:36.808104+00:00"
 }
