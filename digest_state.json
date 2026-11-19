@@ -13,6 +13,8 @@
     "10.7566/jpsj.95.114706",
     "10.7566/jpsj.95.124003",
     "10.7566/jpsj.95.124703",
+    "10.7566/jpsj.95.124704",
+    "10.7566/jpsj.95.124707",
     "10.7566/jpsj.95.125001",
     "2610.33556",
     "2610.34230",
@@ -115,17 +117,21 @@
     "2611.18073",
     "2611.18182",
     "2611.18187",
+    "2611.19804",
     "2611.19993",
     "2611.20102",
     "2611.20123",
     "2611.20133",
     "2611.20697",
+    "2611.21869",
     "2611.22442",
     "2611.22781",
     "2611.22784",
     "2611.22864",
     "2611.23131",
-    "2611.23181"
+    "2611.23181",
+    "2611.23500",
+    "2611.24092"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -246,7 +252,13 @@
     "Canonical spin glass behavior and memory effects in van der Waals magnet (Fe0.55Ni0.45)3GaTe2",
     "From a High-T$\\rm_C$ Spin-Gapless Semiconductor to a Spin-Glass: The Role of Disorder in NiMnCrAl",
     "Charge-transfer excitation drives cooperative phonon-assisted exciton self-trapping in NiPS$_3$",
-    "Magnetic History and Field Sweep Rate Effects on Transformation Hysteresis in $\\mathrm{Ni}_{41}\\mathrm{Co}_{9}\\mathrm{Mn}_{31.5}\\mathrm{Ga}_{18.5}$"
+    "Magnetic History and Field Sweep Rate Effects on Transformation Hysteresis in $\\mathrm{Ni}_{41}\\mathrm{Co}_{9}\\mathrm{Mn}_{31.5}\\mathrm{Ga}_{18.5}$",
+    "Synthesis-route-dependent state selection in the frustrated spinel ZnV$_2$O$_4$",
+    "Local Motion and 4 f Magnetism in Rare-Earth-Exchanged LTL-Type Zeolites Probed by 27 Al NMR",
+    "Magnon-Phonon-Polariton Optomechanics in a van der Waals Magnet",
+    "Spectroscopic evidence for unconventional surface magnetism in the Kondo insulator FeSb$_2$",
+    "Observation of room-temperature intrinsic antiferroelectricity in van der Waals NbOCl2",
+    "Fermi-Liquid versus “Strange-Metal” Analyses of the Electrical Resistivity in a Quantum Critical Regime of the Unconventional Superconductor UTe 2"
   ],
   "pending": [
     {
@@ -341,6 +353,50 @@
     }
   ],
   "screened": {
+    "10.1007/978-94-024-2316-7_6": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "dielectric"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "研究生物基聚合物的光聚合过程与介电弛豫，结合机器学习势函数，属于软物质与计算材料学范畴。"
+      }
+    },
+    "10.1038/s42254-026-00944-7": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "关于二维多铁材料及其实验表征方法的综述文章，无具体新样品测量。"
+      }
+    },
     "10.1073/pnas.2614506123": {
       "at": "2026-11-13T07:29:53.480405+00:00",
       "result": {
@@ -673,6 +729,29 @@
         "topic": "peripheral",
         "score": 3.0,
         "highlight_zh": "报道了重费米子超导体 UTe2 单晶在高磁场下的磁输运测量与超导相图。"
+      }
+    },
+    "10.7566/jpsj.95.124707": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "27 Al NMR"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "adjacent",
+        "score": 7.0,
+        "highlight_zh": "利用 27Al NMR 研究了稀土离子交换 LTL 型沸石中的局域运动与 4f 磁性响应。"
       }
     },
     "2611.07045": {
@@ -3871,7 +3950,312 @@
         "score": 7.0,
         "highlight_zh": "研究了外尔半金属家族单晶 DyAlGe 和 HoAlGe 的磁性、热力学与磁热效应。"
       }
+    },
+    "2611.23337": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "关于二维多铁材料及其实验表征方法的综述文章，无具体新样品测量。"
+      }
+    },
+    "2611.23390": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论探讨多端约瑟夫森网络中的宇称诱导阻挫及超导相干性。"
+      }
+    },
+    "2611.23409": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论模型研究分数陈绝缘体。"
+      }
+    },
+    "2611.23489": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [
+          "polarization"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "研究铁电电容器在低温AI硬件中的应用，属于器件与应用研究，与凝聚态磁学核心方向无关。"
+      }
+    },
+    "2611.23500": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "固相反应",
+        "measurements": [
+          "χ(T)",
+          "specific heat",
+          "neutron"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": true,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "core",
+        "score": 9.0,
+        "highlight_zh": "研究了阻挫尖晶石 ZnV2O4 微波辅助固相反应样品的自旋液体动力学与磁性，结合了磁性与中子散射测量。"
+      }
+    },
+    "2611.23882": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论发展了单 Q 螺旋磁体中局域自旋约束与对称性的变分方法。"
+      }
+    },
+    "2611.23992": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "彭罗斯准晶中光诱导磁性的理论计算。"
+      }
+    },
+    "2611.24092": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "dielectric",
+          "polarization"
+        ],
+        "theta_CW": null,
+        "T_order": "300",
+        "frustration_index": null,
+        "room_temperature_relevant": true,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 3.0,
+        "highlight_zh": "层状材料 NbOCl2 中的室温反铁电性观测，主要基于 SHG 和拉曼光谱，偏向铁电和光学器件应用。"
+      }
+    },
+    "2611.24097": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "采用巨正则蒙特卡洛与机器学习势函数研究SrTiO3晶界结构，属于纯计算工作。"
+      }
+    },
+    "2611.24134": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论研究三角晶格自旋-1磁体中的 CP^2 斯格明子激发与拓扑热霍尔响应。"
+      }
+    },
+    "2611.24148": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "dielectric"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "研究生物基聚合物的光聚合过程与介电弛豫，结合机器学习势函数，属于软物质与计算材料学范畴。"
+      }
+    },
+    "2611.24312": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论研究拟一维 Kitaev 链中的共形缺陷，无实验样品测量。"
+      }
+    },
+    "2611.24531": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "三维阿贝尔规范理论的大味数修正解析计算。"
+      }
+    },
+    "2611.24935": {
+      "at": "2026-11-19T08:14:16.903802+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "纯理论构建部分磁化手性自旋液体的精确母体哈密顿量，无实验测量。"
+      }
     }
   },
-  "last_successful_run": "2026-11-18T08:06:01.708850+00:00"
+  "last_successful_run": "2026-11-19T08:14:16.903802+00:00"
 }
