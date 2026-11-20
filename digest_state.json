@@ -1,5 +1,6 @@
 {
   "sent_ids": [
+    "10.1016/j.jallcom.2026.192414",
     "10.1039/d6tc01028h",
     "10.1073/pnas.2614506123",
     "10.1088/1674-1056/ae6b3b",
@@ -123,6 +124,7 @@
     "2611.20123",
     "2611.20133",
     "2611.20697",
+    "2611.20908",
     "2611.21869",
     "2611.22442",
     "2611.22781",
@@ -131,7 +133,12 @@
     "2611.23131",
     "2611.23181",
     "2611.23500",
-    "2611.24092"
+    "2611.24092",
+    "2611.25225",
+    "2611.25291",
+    "2611.25546",
+    "2611.25792",
+    "2611.25828"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -258,7 +265,13 @@
     "Magnon-Phonon-Polariton Optomechanics in a van der Waals Magnet",
     "Spectroscopic evidence for unconventional surface magnetism in the Kondo insulator FeSb$_2$",
     "Observation of room-temperature intrinsic antiferroelectricity in van der Waals NbOCl2",
-    "Fermi-Liquid versus “Strange-Metal” Analyses of the Electrical Resistivity in a Quantum Critical Regime of the Unconventional Superconductor UTe 2"
+    "Fermi-Liquid versus “Strange-Metal” Analyses of the Electrical Resistivity in a Quantum Critical Regime of the Unconventional Superconductor UTe 2",
+    "Scattering Circular Dichroism from Spatially Modulated Anisotropic Magnetic Dipoles in BiFeO$_3$",
+    "Canted antiferromagnetism and spin-flop transition in honeycomb $α$-Na$_2$PrO$_3$ revealed by angle-dependent torque magnetometry up to 35 T",
+    "Single-Crystal Growth, Structure, and Physical Properties of Yb2MoO6",
+    "Current-driven resistive switching in high-field heavy fermion metal UTe2",
+    "Helices at Twisted Ferroelectric Interfaces",
+    "How Elasticity and Chiral Damping Shape Domain-Wall Creep"
   ],
   "pending": [
     {
@@ -374,6 +387,31 @@
         "topic": "off_topic",
         "score": 0.0,
         "highlight_zh": "研究生物基聚合物的光聚合过程与介电弛豫，结合机器学习势函数，属于软物质与计算材料学范畴。"
+      }
+    },
+    "10.1016/j.jallcom.2026.192414": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "χ(T)",
+          "optical spectra",
+          "SEM"
+        ],
+        "theta_CW": "-65.7",
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": true,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "adjacent",
+        "score": 7.0,
+        "highlight_zh": "稀土钼酸盐 Yb2MoO6 单晶的生长与物性研究，表现出居里-外斯顺磁行为与反铁磁关联。"
       }
     },
     "10.1038/s42254-026-00944-7": {
@@ -4255,7 +4293,379 @@
         "score": 0.0,
         "highlight_zh": "纯理论构建部分磁化手性自旋液体的精确母体哈密顿量，无实验测量。"
       }
+    },
+    "2611.25010": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "基于 Hubbard 相互作用构造分数量子陈绝缘体精确多体波函数的纯理论模型工作。"
+      }
+    },
+    "2611.25051": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "关于 spin-1 Kitaev 链中量子多体疤痕与手性对称保护零模的纯理论研究。"
+      }
+    },
+    "2611.25089": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "基于第一性原理的手性声子非简谐相互作用研究。"
+      }
+    },
+    "2611.25153": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "受海森堡反铁磁相位重构启发关于 Token 图 Max-Cut 问题的纯数学图论计算研究。"
+      }
+    },
+    "2611.25225": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "χ(T)",
+          "optical spectra",
+          "SEM"
+        ],
+        "theta_CW": "-65.7",
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": true,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "adjacent",
+        "score": 7.0,
+        "highlight_zh": "稀土钼酸盐 Yb2MoO6 单晶的生长与物性研究，表现出居里-外斯顺磁行为与反铁磁关联。"
+      }
+    },
+    "2611.25291": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "torque magnetometry"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": true,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "core",
+        "score": 8.0,
+        "highlight_zh": "蜂窝状自旋轨道纠缠磁体单晶的角依赖扭矩磁强计测量，揭示了斜磁反铁磁结构与自旋翻转转变。"
+      }
+    },
+    "2611.25321": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "基于机器学习与多体计算从三角格子合成中子散射谱中反演自旋哈密顿量的纯计算研究。"
+      }
+    },
+    "2611.25546": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "resonant soft x-ray scattering"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": true,
+        "meets_measured_data": true,
+        "meets_physics_highlight": true,
+        "meets_feasible": true,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "core",
+        "score": 9.0,
+        "highlight_zh": "多铁性 BiFeO3 中自旋摆线内空间调制各向异性磁偶极子的共振软X射线小角散射与圆二色性测量。"
+      }
+    },
+    "2611.25792": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "resistivity"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": true,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "adjacent",
+        "score": 6.0,
+        "highlight_zh": "强关联重费米子超导材料 UTe2 微结构的电流驱动电阻开关效应测量。"
+      }
+    },
+    "2611.25828": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "4D STEM",
+          "second harmonic optical circularly-polarised dichroism"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": true,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": true,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 4.0,
+        "highlight_zh": "铁电铌酸锂单晶扭曲界面处结构与偶极螺旋的电子显微学及光学二次谐波测量。"
+      }
+    },
+    "2611.25883": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "单轴手性磁体中高阶磁霍普夫子（hopfion）拓扑结构的微磁学模拟与能量稳定性理论研究。"
+      }
+    },
+    "2611.26158": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "film",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 3.0,
+        "highlight_zh": "研究了二维半导体中滑动铁电性对激子偶极和四极构型的光学调控，属于光电器件与激子物理研究。"
+      }
+    },
+    "2611.26257": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 0.0,
+        "highlight_zh": "基于矩阵乘积态虚时间演化快速提取 Haagerup CFT 连续谱与场论特征的纯数值算法研究。"
+      }
+    },
+    "2611.26482": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "polycrystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "ultrafast demagnetization"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 3.0,
+        "highlight_zh": "超快激光诱导 NiO 和 Mn2Au 反铁磁退磁动力学实验，主要关注非平衡态电子散射与退磁速率。"
+      }
+    },
+    "2611.26489": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "关于强关联费米子系统非标准量子统计与 Mott 绝缘态的纯理论研究。"
+      }
+    },
+    "2611.26589": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "纯理论研究磁振子高次谐波与激子相互作用。"
+      }
+    },
+    "2611.26610": {
+      "at": "2026-11-20T07:55:52.141122+00:00",
+      "result": {
+        "experimental": false,
+        "sample_form": "none",
+        "growth_method": "unknown",
+        "measurements": [],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": false,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": true,
+        "topic": "off_topic",
+        "score": 1.0,
+        "highlight_zh": "自旋链的场论与 Bethe ansatz 纯理论计算。"
+      }
     }
   },
-  "last_successful_run": "2026-11-19T08:14:16.903802+00:00"
+  "last_successful_run": "2026-11-20T07:55:52.141122+00:00"
 }
