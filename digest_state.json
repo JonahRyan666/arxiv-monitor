@@ -15,6 +15,7 @@
     "10.7566/jpsj.95.124003",
     "10.7566/jpsj.95.124703",
     "10.7566/jpsj.95.124704",
+    "10.7566/jpsj.95.124706",
     "10.7566/jpsj.95.124707",
     "10.7566/jpsj.95.125001",
     "2610.33556",
@@ -126,10 +127,12 @@
     "2611.20697",
     "2611.20908",
     "2611.21869",
+    "2611.21934",
     "2611.22442",
     "2611.22781",
     "2611.22784",
     "2611.22864",
+    "2611.22912",
     "2611.23131",
     "2611.23181",
     "2611.23500",
@@ -138,7 +141,9 @@
     "2611.25291",
     "2611.25546",
     "2611.25792",
-    "2611.25828"
+    "2611.25828",
+    "2611.26158",
+    "2611.26482"
   ],
   "sent_titles": [
     "Pulsed Laser Deposition of Ferroelectric SrTiO3 Shells Enables Polarization-Controlled Charge Separation in TiO2 Photoanode",
@@ -271,7 +276,12 @@
     "Single-Crystal Growth, Structure, and Physical Properties of Yb2MoO6",
     "Current-driven resistive switching in high-field heavy fermion metal UTe2",
     "Helices at Twisted Ferroelectric Interfaces",
-    "How Elasticity and Chiral Damping Shape Domain-Wall Creep"
+    "How Elasticity and Chiral Damping Shape Domain-Wall Creep",
+    "Two distinct notions of speed in antiferromagnets",
+    "Unusual Upper Critical Field in UTe 2 Revealed by Magnetotransport Measurements up to 42 T",
+    "Sliding-ferroelectric control of dipolar and quadrupolar excitons in R-stacked WSe$_2$",
+    "Electrical addressing of compensated magnetic order in artificial spin ice",
+    "Bandwidth-tunable thermal emitter via dynamic resonator coupling and loss"
   ],
   "pending": [
     {
@@ -4667,5 +4677,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-20T07:55:52.141122+00:00"
+  "last_successful_run": "2026-11-22T07:39:31.488906+00:00"
 }
