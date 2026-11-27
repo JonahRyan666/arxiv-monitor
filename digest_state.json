@@ -13,6 +13,7 @@
     "10.7566/jpsj.95.114703",
     "10.7566/jpsj.95.114705",
     "10.7566/jpsj.95.114706",
+    "10.7566/jpsj.95.123704",
     "10.7566/jpsj.95.124003",
     "10.7566/jpsj.95.124703",
     "10.7566/jpsj.95.124704",
@@ -91,6 +92,7 @@
     "2611.09202",
     "2611.09494",
     "2611.09509",
+    "2611.09814",
     "2611.09881",
     "2611.10173",
     "2611.10225",
@@ -154,6 +156,7 @@
     "2611.28395",
     "2611.29114",
     "2611.29204",
+    "2611.29928",
     "2611.30121",
     "2611.30395",
     "2611.30598",
@@ -161,7 +164,9 @@
     "2611.31413",
     "2611.31816",
     "2611.31861",
+    "2611.31959",
     "2611.32401",
+    "2611.32739",
     "2611.33085",
     "2611.33156",
     "2611.33405",
@@ -324,7 +329,12 @@
     "Anisotropic magnetic-field modulation of hysteretic sheet resistance in few-layer ferroelectric WTe2",
     "Unveiling ferroelectricity in wafer-scale beta-phase In$_2$Se$_3$",
     "Strain-enabled dynamical magnetoelectric coupling in BaFe$_{12}$O$_{19}$",
-    "Polarization-independent self-hybridized strong coupling by Brillouin zone folding induced quasi-bound states in the continuum in bulk WS2 metasurfaces"
+    "Polarization-independent self-hybridized strong coupling by Brillouin zone folding induced quasi-bound states in the continuum in bulk WS2 metasurfaces",
+    "NMR Verification of Dirac Nodal Lines in a Single-Component Molecular Conductor",
+    "Antiferroelectric Fluids with Hierarchical Polar Organization",
+    "Arrival-time problem in the quantum information era - observation of a Zeno crossover in monitored arrival-time distributions",
+    "Neutron Spectroscopy Transformed: Deuterated ZIF-8 and Machine-Learned Potentials Catch Nitrogen Threading Its Gates",
+    "Pyroelectric Harvesting from Steady Heat Sources via Active Piezoelectric Thermal Switching"
   ],
   "pending": [
     {
@@ -353,12 +363,6 @@
     },
     {
       "arxiv_id": "2611.07045",
-      "doi": null,
-      "source": "arxiv",
-      "attempts": 2
-    },
-    {
-      "arxiv_id": "2611.09814",
       "doi": null,
       "source": "arxiv",
       "attempts": 2
@@ -594,6 +598,29 @@
         "topic": "off_topic",
         "score": 1.0,
         "highlight_zh": "二维正方形晶格 Hubbard 模型的量子蒙特卡洛研究，属于纯理论模型计算。"
+      }
+    },
+    "10.7566/jpsj.95.123704": {
+      "at": "2026-11-27T09:19:28.053884+00:00",
+      "result": {
+        "experimental": true,
+        "sample_form": "single crystal",
+        "growth_method": "unknown",
+        "measurements": [
+          "NMR"
+        ],
+        "theta_CW": null,
+        "T_order": null,
+        "frustration_index": null,
+        "room_temperature_relevant": false,
+        "meets_measured_data": true,
+        "meets_physics_highlight": false,
+        "meets_feasible": false,
+        "thin_film_only_mbe": false,
+        "off_topic": false,
+        "topic": "peripheral",
+        "score": 4.0,
+        "highlight_zh": "利用NMR实验结合数值模拟研究了单组分分子导体[Ni(dmdt)2]中的狄拉克节线。"
       }
     },
     "10.7566/jpsj.95.124005": {
@@ -4996,5 +5023,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-26T09:03:39.420679+00:00"
+  "last_successful_run": "2026-11-27T09:19:28.053884+00:00"
 }
