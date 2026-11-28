@@ -159,6 +159,7 @@
     "2611.29928",
     "2611.30121",
     "2611.30395",
+    "2611.30536",
     "2611.30598",
     "2611.30992",
     "2611.31413",
@@ -334,7 +335,8 @@
     "Antiferroelectric Fluids with Hierarchical Polar Organization",
     "Arrival-time problem in the quantum information era - observation of a Zeno crossover in monitored arrival-time distributions",
     "Neutron Spectroscopy Transformed: Deuterated ZIF-8 and Machine-Learned Potentials Catch Nitrogen Threading Its Gates",
-    "Pyroelectric Harvesting from Steady Heat Sources via Active Piezoelectric Thermal Switching"
+    "Pyroelectric Harvesting from Steady Heat Sources via Active Piezoelectric Thermal Switching",
+    "Metal-Dielectric Bilayer Supported Nanoporous Silver Substrates for Ultrasensitive Surface-Enhanced Raman Scattering"
   ],
   "pending": [
     {
@@ -663,30 +665,6 @@
         "topic": "off_topic",
         "score": 0.0,
         "highlight_zh": "基于紧束缚模型研究K4网络外场下电子态与霍夫斯塔特谱的纯理论研究。"
-      }
-    },
-    "10.7566/jpsj.95.124703": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "polycrystal",
-        "growth_method": "unknown",
-        "measurements": [
-          "XAS",
-          "photoemission"
-        ],
-        "theta_CW": null,
-        "T_order": "29.0",
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": false,
-        "topic": "peripheral",
-        "score": 5.0,
-        "highlight_zh": "利用X射线吸收光谱和光电子能谱研究GdGe1.5在反铁磁转变（TN=29 K）附近的电子结构变化。"
       }
     },
     "10.7566/jpsj.95.124704": {
@@ -1095,285 +1073,6 @@
         "topic": "off_topic",
         "score": 1.0,
         "highlight_zh": "采用机器学习原子间势和分子动力学模拟研究PbTe中的长程谐性相互作用与局部极性关联，无样品制备与测量。"
-      }
-    },
-    "2611.17414": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "基于四极绝缘体模型和Hartree-Fock近似的纯理论计算工作，讨论量子几何对交错磁性的影响。"
-      }
-    },
-    "2611.17429": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "关于一维仲费米子可逆拓扑相与边界投影表示的纯理论研究。"
-      }
-    },
-    "2611.17462": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "用于晶体结构生成与性质优化的 AI/机器学习生成模型算法研究。"
-      }
-    },
-    "2611.17724": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯理论工作，研究蜂窝Color Code模型及场论中的任意子凝聚与拓扑相变"
-      }
-    },
-    "2611.17816": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯理论与计算工作，分类克莱因瓶点阵上Z_N模型的局部粘合与拓扑量子编码性质"
-      }
-    },
-    "2611.18073": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "single crystal",
-        "growth_method": "unknown",
-        "measurements": [
-          "neutron"
-        ],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": true,
-        "meets_physics_highlight": true,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": false,
-        "topic": "core",
-        "score": 9.0,
-        "highlight_zh": "研究了具交替铁磁-反铁磁S=1/2链的阻挫量子磁体Cu2(NO3)(OH)3，用中子谱学观测到磁振子杂化及自旋子分数化遗迹。"
-      }
-    },
-    "2611.18109": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "none",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "基于密度泛函理论（DFT）模拟研究了磁性半金属EuCd2As2在压力下的电子与磁学性质。"
-      }
-    },
-    "2611.18182": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "single crystal",
-        "growth_method": "unknown",
-        "measurements": [
-          "neutron"
-        ],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": true,
-        "meets_physics_highlight": true,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": false,
-        "topic": "adjacent",
-        "score": 7.5,
-        "highlight_zh": "利用半偏振中子散射和非弹性中子散射测量FeF2单晶，观测到交错磁体（altermagnet）手性磁振子能带分裂与各向异性调控的手性反转。"
-      }
-    },
-    "2611.18187": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": true,
-        "sample_form": "film",
-        "growth_method": "unknown",
-        "measurements": [
-          "PL"
-        ],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "peripheral",
-        "score": 3.0,
-        "highlight_zh": "研究了WS2/CrSBr二维范德华异质结中的谷与磁激子耦合及磁邻近效应。"
-      }
-    },
-    "2611.18402": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "探讨单轴应变对铁电体BaTiO3手性声子影响的第一性原理计算研究。"
-      }
-    },
-    "2611.18406": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "基于量子硬件模拟Ir-Ir键自旋轨道激子转移过程的量子计算理论工作。"
-      }
-    },
-    "2611.18497": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 0.0,
-        "highlight_zh": "纯数值方法工作，提出正则化神经网络量子态算法求解含DMI的海森堡模型"
-      }
-    },
-    "2611.18525": {
-      "at": "2026-11-16T07:30:01.223157+00:00",
-      "result": {
-        "experimental": false,
-        "sample_form": "none",
-        "growth_method": "unknown",
-        "measurements": [],
-        "theta_CW": null,
-        "T_order": null,
-        "frustration_index": null,
-        "room_temperature_relevant": false,
-        "meets_measured_data": false,
-        "meets_physics_highlight": false,
-        "meets_feasible": false,
-        "thin_film_only_mbe": false,
-        "off_topic": true,
-        "topic": "off_topic",
-        "score": 1.0,
-        "highlight_zh": "第一性原理计算工作，理论探讨压力与外磁场调控双层反铁磁材料CrSBr能带拓扑演化"
       }
     },
     "2611.18840": {
@@ -5023,5 +4722,5 @@
       }
     }
   },
-  "last_successful_run": "2026-11-27T09:19:28.053884+00:00"
+  "last_successful_run": "2026-11-28T08:36:16.935364+00:00"
 }
